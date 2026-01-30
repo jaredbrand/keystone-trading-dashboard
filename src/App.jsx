@@ -165,14 +165,18 @@ export default function LiveTradingDashboard() {
   const filteredBets = getFilteredData(betsData);
   const filteredDaily = getFilteredData(dailyPNLData);
 
-  // Calculate metrics
+  // Calculate metrics from filtered data
   const totalPNL = filteredBets.reduce((sum, bet) => sum + bet.pnl, 0);
-  const totalRisked = filteredBets.reduce((sum, bet) => sum + bet.betAmount, 0);
+  const totalTraded = filteredBets.reduce((sum, bet) => sum + bet.betAmount, 0);
   const wins = filteredBets.filter(bet => bet.outcome === 'Win').length;
   const losses = filteredBets.filter(bet => bet.outcome === 'Loss').length;
-  const winRate = filteredBets.length > 0 ? (wins / filteredBets.length) * 100 : 0;
-  const roi = totalRisked > 0 ? (totalPNL / totalRisked) * 100 : 0;
+  const totalSettled = wins + losses;
+  const winRate = totalSettled > 0 ? (wins / totalSettled) * 100 : 0;
+  const roi = totalTraded > 0 ? (totalPNL / totalTraded) * 100 : 0;
   const avgEdge = filteredBets.length > 0 ? filteredBets.reduce((sum, bet) => sum + bet.margin, 0) / filteredBets.length : 0;
+  
+  // Calculate Hold % (similar to avgEdge but as a percentage of amount traded)
+  const holdPercentage = summaryData?.avgHold || avgEdge;
 
   // Open positions (no outcome yet)
   const openPositions = filteredBets.filter(bet => !bet.outcome || (bet.outcome !== 'Win' && bet.outcome !== 'Loss'));
@@ -473,8 +477,13 @@ export default function LiveTradingDashboard() {
           </div>
           
           <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
-            <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em' }}>$ RISKED</div>
-            <div style={{ fontSize: '32px', fontWeight: '800', color: '#e8e6e3', fontFamily: 'Inter, sans-serif' }}>${totalRisked.toLocaleString()}</div>
+            <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em' }}>$ TRADED</div>
+            <div style={{ fontSize: '32px', fontWeight: '800', color: '#e8e6e3', fontFamily: 'Inter, sans-serif' }}>${totalTraded.toLocaleString()}</div>
+          </div>
+          
+          <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
+            <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em' }}>HOLD %</div>
+            <div style={{ fontSize: '32px', fontWeight: '800', color: '#D4AF37', fontFamily: 'Inter, sans-serif' }}>{holdPercentage.toFixed(2)}%</div>
           </div>
           
           <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
