@@ -50,7 +50,7 @@ export default function LiveTradingDashboard() {
       const dailyJson = await dailyResponse.json();
       const summaryJson = await summaryResponse.json();
 
-     // Process Bets Data
+    // Process Bets Data
 const betsRows = betsJson.values || [];
 const betsHeaders = betsRows[0] || [];
 const processedBets = betsRows.slice(1).map(row => {
@@ -70,9 +70,16 @@ const processedBets = betsRows.slice(1).map(row => {
     betAmount: parseFloat(bet['Bet Amount']?.replace(/[$,]/g, '')) || 0,
     outcome: bet['Outcome'] || '',
     pnl: parseFloat(bet['PNL']?.replace(/[$,()]/g, '').replace('-', '-')) || 0,
-    confirmed: bet['Confirmed'] // Store the confirmed status
+    confirmed: bet['Confirmed']
   };
-}).filter(bet => bet.fixture && (bet.confirmed === 'TRUE' || bet.confirmed === true || bet.confirmed === 'true' || bet.confirmed === '✓'));
+}).filter(bet => {
+  // Debug: log first 5 to see what confirmed values look like
+  if (bet.game) {
+    console.log('Game:', bet.game, 'Confirmed:', bet.confirmed, 'Type:', typeof bet.confirmed);
+  }
+  // For now, show everything so we can see the data
+  return bet.fixture;
+});
       
       // Process Daily PNL Data
       const dailyRows = dailyJson.values || [];
