@@ -50,29 +50,30 @@ export default function LiveTradingDashboard() {
       const dailyJson = await dailyResponse.json();
       const summaryJson = await summaryResponse.json();
 
-      // Process Bets Data
-      const betsRows = betsJson.values || [];
-      const betsHeaders = betsRows[0] || [];
-      const processedBets = betsRows.slice(1).map(row => {
-        const bet = {};
-        betsHeaders.forEach((header, idx) => {
-          bet[header] = row[idx] || '';
-        });
-        return {
-          game: bet['Game Number'],
-          fixture: bet['Fixture'],
-          date: bet['FixtureDate'],
-          market: bet['Market'],
-          selection: bet['Selection'],
-          handicap: bet['Handicap'] ? parseFloat(bet['Handicap']) : null,
-          odds: parseFloat(bet['Odds']) || 0,
-          margin: parseFloat(bet['Margin']?.replace('%', '')) || 0,
-          betAmount: parseFloat(bet['Bet Amount']?.replace(/[$,]/g, '')) || 0,
-          outcome: bet['Outcome'] || '',
-          pnl: parseFloat(bet['PNL']?.replace(/[$,()]/g, '').replace('-', '-')) || 0
-        };
-      }).filter(bet => bet.fixture && bet['Confirmed'] === 'TRUE'); // Only confirmed bets
-
+     // Process Bets Data
+const betsRows = betsJson.values || [];
+const betsHeaders = betsRows[0] || [];
+const processedBets = betsRows.slice(1).map(row => {
+  const bet = {};
+  betsHeaders.forEach((header, idx) => {
+    bet[header] = row[idx] || '';
+  });
+  return {
+    game: bet['Game Number'],
+    fixture: bet['Fixture'],
+    date: bet['FixtureDate'],
+    market: bet['Market'],
+    selection: bet['Selection'],
+    handicap: bet['Handicap'] ? parseFloat(bet['Handicap']) : null,
+    odds: parseFloat(bet['Odds']) || 0,
+    margin: parseFloat(bet['Margin']?.replace('%', '')) || 0,
+    betAmount: parseFloat(bet['Bet Amount']?.replace(/[$,]/g, '')) || 0,
+    outcome: bet['Outcome'] || '',
+    pnl: parseFloat(bet['PNL']?.replace(/[$,()]/g, '').replace('-', '-')) || 0,
+    confirmed: bet['Confirmed'] // Store the confirmed status
+  };
+}).filter(bet => bet.fixture && bet.confirmed === 'TRUE'); // Only confirmed bets
+      
       // Process Daily PNL Data
       const dailyRows = dailyJson.values || [];
       const dailyHeaders = dailyRows[0] || [];
