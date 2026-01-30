@@ -165,20 +165,18 @@ export default function LiveTradingDashboard() {
   const filteredBets = getFilteredData(betsData);
   const filteredDaily = getFilteredData(dailyPNLData);
 
-  // Calculate metrics from SummaryStats (correct cell mappings)
-  // For filtered data, we'll use the summary data from Google Sheets
-  const totalPNL = summaryData?.mtdPNL || 0; // A2: MTD PNL
-  const totalTrades = summaryData?.mtdTotalBets || 0; // C2: MTD Total Bets (note: actually column C, not shown in your mapping)
-  const winRate = summaryData?.mtdWinRate || 0; // B2: MTD Win Rate (THEO)
-  const totalTraded = summaryData?.mtdNotional || 0; // D2: MTD Notional
-  const holdPercentage = summaryData?.avgHold || 0; // F2: Hold
-  const avgEdge = summaryData?.avgEdge || 0; // E2: Average Edge
-  const avgTradeTime = summaryData?.avgTime || ''; // B10: Avg Time (ET)
-  const avgTradesPerDay = summaryData?.avgTradesPerDay || 0; // A10: Avg Trades / Day
-  const roi = summaryData?.roi || 0; // G2: ROI%
+  // Calculate metrics from filtered data
+  const totalPNL = filteredBets.reduce((sum, bet) => sum + bet.pnl, 0);
+  const totalTraded = filteredBets.reduce((sum, bet) => sum + bet.betAmount, 0);
+  const wins = filteredBets.filter(bet => bet.outcome === 'Win').length;
+  const losses = filteredBets.filter(bet => bet.outcome === 'Loss').length;
+  const totalSettled = wins + losses;
+  const winRate = totalSettled > 0 ? (wins / totalSettled) * 100 : 0;
+  const roi = totalTraded > 0 ? (totalPNL / totalTraded) * 100 : 0;
+  const avgEdge = filteredBets.length > 0 ? filteredBets.reduce((sum, bet) => sum + bet.margin, 0) / filteredBets.length : 0;
   
-  // Still calculate from filtered bets for some display purposes
-  const filteredBetsCount = filteredBets.length;
+  // Calculate Hold % (similar to avgEdge but as a percentage of amount traded)
+  const holdPercentage = summaryData?.avgHold || avgEdge;
 
   // Open positions (no outcome yet)
   const openPositions = filteredBets.filter(bet => !bet.outcome || (bet.outcome !== 'Win' && bet.outcome !== 'Loss'));
@@ -457,12 +455,25 @@ export default function LiveTradingDashboard() {
           
           <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
             <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em' }}>TOTAL TRADES</div>
-            <div style={{ fontSize: '32px', fontWeight: '800', color: '#e8e6e3', fontFamily: 'Inter, sans-serif' }}>{totalTrades}</div>
+            <div style={{ fontSize: '32px', fontWeight: '800', color: '#e8e6e3', fontFamily: 'Inter, sans-serif' }}>{filteredBets.length}</div>
           </div>
           
           <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
             <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em' }}>WIN RATE</div>
             <div style={{ fontSize: '32px', fontWeight: '800', color: '#e8e6e3', fontFamily: 'Inter, sans-serif' }}>{winRate.toFixed(1)}%</div>
+            <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', fontFamily: 'JetBrains Mono, monospace' }}>{wins}W / {losses}L</div>
+          </div>
+          
+          <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
+            <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em' }}>ROI</div>
+            <div style={{ 
+              fontSize: '32px', 
+              fontWeight: '800', 
+              color: roi >= 0 ? '#10b981' : '#ef4444',
+              fontFamily: 'Inter, sans-serif'
+            }}>
+              {roi >= 0 ? '+' : ''}{roi.toFixed(1)}%
+            </div>
           </div>
           
           <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
@@ -481,25 +492,8 @@ export default function LiveTradingDashboard() {
           </div>
           
           <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
-            <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em' }}>AVG TRADE TIME</div>
-            <div style={{ fontSize: '32px', fontWeight: '800', color: '#e8e6e3', fontFamily: 'Inter, sans-serif' }}>{avgTradeTime}</div>
-          </div>
-          
-          <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
             <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em' }}>TRADES/DAY</div>
-            <div style={{ fontSize: '32px', fontWeight: '800', color: '#e8e6e3', fontFamily: 'Inter, sans-serif' }}>{avgTradesPerDay.toFixed(1)}</div>
-          </div>
-          
-          <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
-            <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em' }}>ROI</div>
-            <div style={{ 
-              fontSize: '32px', 
-              fontWeight: '800', 
-              color: roi >= 0 ? '#10b981' : '#ef4444',
-              fontFamily: 'Inter, sans-serif'
-            }}>
-              {roi >= 0 ? '+' : ''}{roi.toFixed(2)}%
-            </div>
+            <div style={{ fontSize: '32px', fontWeight: '800', color: '#e8e6e3', fontFamily: 'Inter, sans-serif' }}>{summaryData?.avgTradesPerDay.toFixed(1) || '0'}</div>
           </div>
         </div>
 
