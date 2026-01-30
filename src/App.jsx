@@ -65,7 +65,19 @@ export default function LiveTradingDashboard() {
         // Column N (index 13) = Bet Amount
         // Column U (index 20) = PNL
         const betAmount = parseFloat(row[13]?.replace(/[$,]/g, '')) || 0;
-        const pnl = parseFloat(row[20]?.replace(/[$,()]/g, '').replace('-', '-')) || 0;
+        
+        // Parse PNL - handle both negative numbers and parentheses format
+        let pnlValue = 0;
+        const pnlStr = row[20] || '';
+        if (pnlStr) {
+          // Remove $ and commas
+          let cleaned = pnlStr.replace(/[$,]/g, '');
+          // Check if it's in parentheses (negative)
+          if (cleaned.includes('(') && cleaned.includes(')')) {
+            cleaned = '-' + cleaned.replace(/[()]/g, '');
+          }
+          pnlValue = parseFloat(cleaned) || 0;
+        }
         
         return {
           game: bet['Game Number'],
@@ -78,7 +90,7 @@ export default function LiveTradingDashboard() {
           margin: parseFloat(bet['Margin']?.replace('%', '')) || 0,
           betAmount: betAmount,
           outcome: bet['Outcome'] || '',
-          pnl: pnl,
+          pnl: pnlValue,
           confirmed: isConfirmed
         };
       }).filter(bet => bet.fixture && bet.confirmed); // Only confirmed bets
