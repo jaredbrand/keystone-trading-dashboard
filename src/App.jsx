@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LineChart, Line, BarChart, Bar, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { LineChart, Line, BarChart, Bar, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area } from 'recharts';
 
 export default function LiveTradingDashboard() {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -50,33 +50,33 @@ export default function LiveTradingDashboard() {
       const dailyJson = await dailyResponse.json();
       const summaryJson = await summaryResponse.json();
 
-    // Process Bets Data
-const betsRows = betsJson.values || [];
-const betsHeaders = betsRows[0] || [];
-const processedBets = betsRows.slice(1).map(row => {
-  const bet = {};
-  betsHeaders.forEach((header, idx) => {
-    bet[header] = row[idx] || '';
-  });
-  // Column R is at index 17 (18th column, zero-indexed)
-  const isConfirmed = row[17] === 'TRUE' || row[17] === true;
-  
-  return {
-    game: bet['Game Number'],
-    fixture: bet['Fixture'],
-    date: bet['FixtureDate'],
-    market: bet['Market'],
-    selection: bet['Selection'],
-    handicap: bet['Handicap'] ? parseFloat(bet['Handicap']) : null,
-    odds: parseFloat(bet['Odds']) || 0,
-    margin: parseFloat(bet['Margin']?.replace('%', '')) || 0,
-    betAmount: parseFloat(bet['Bet Amount']?.replace(/[$,]/g, '')) || 0,
-    outcome: bet['Outcome'] || '',
-    pnl: parseFloat(bet['PNL']?.replace(/[$,()]/g, '').replace('-', '-')) || 0,
-    confirmed: isConfirmed
-  };
-}).filter(bet => bet.fixture && bet.confirmed);
-      
+      // Process Bets Data
+      const betsRows = betsJson.values || [];
+      const betsHeaders = betsRows[0] || [];
+      const processedBets = betsRows.slice(1).map(row => {
+        const bet = {};
+        betsHeaders.forEach((header, idx) => {
+          bet[header] = row[idx] || '';
+        });
+        // Column R is at index 17 (18th column, zero-indexed)
+        const isConfirmed = row[17] === 'TRUE' || row[17] === true;
+        
+        return {
+          game: bet['Game Number'],
+          fixture: bet['Fixture'],
+          date: bet['FixtureDate'],
+          market: bet['Market'],
+          selection: bet['Selection'],
+          handicap: bet['Handicap'] ? parseFloat(bet['Handicap']) : null,
+          odds: parseFloat(bet['Odds']) || 0,
+          margin: parseFloat(bet['Margin']?.replace('%', '')) || 0,
+          betAmount: parseFloat(bet['Bet Amount']?.replace(/[$,]/g, '')) || 0,
+          outcome: bet['Outcome'] || '',
+          pnl: parseFloat(bet['PNL']?.replace(/[$,()]/g, '').replace('-', '-')) || 0,
+          confirmed: isConfirmed
+        };
+      }).filter(bet => bet.fixture && bet.confirmed); // Only confirmed bets
+
       // Process Daily PNL Data
       const dailyRows = dailyJson.values || [];
       const dailyHeaders = dailyRows[0] || [];
@@ -163,61 +163,48 @@ const processedBets = betsRows.slice(1).map(row => {
   };
 
   const filteredBets = getFilteredData(betsData);
-  const filteredDailyPNL = getFilteredData(dailyPNLData);
+  const filteredDaily = getFilteredData(dailyPNLData);
 
-  // Calculate stats
-  const settledBets = filteredBets.filter(b => b.outcome && b.outcome !== "");
-  const openBets = filteredBets.filter(b => !b.outcome || b.outcome === "");
-  const wins = settledBets.filter(b => b.outcome === "Win").length;
-  const losses = settledBets.filter(b => b.outcome === "Loss").length;
-  const totalTrades = settledBets.length;
-  const winRate = totalTrades > 0 ? ((wins / totalTrades) * 100).toFixed(1) : 0;
-  const totalPnL = settledBets.reduce((sum, t) => sum + (t.pnl || 0), 0);
-  const totalRisked = settledBets.reduce((sum, t) => sum + (t.betAmount || 0), 0);
-  const roi = totalRisked > 0 ? ((totalPnL / totalRisked) * 100).toFixed(2) : 0;
+  // Calculate metrics
+  const totalPNL = filteredBets.reduce((sum, bet) => sum + bet.pnl, 0);
+  const totalRisked = filteredBets.reduce((sum, bet) => sum + bet.betAmount, 0);
+  const wins = filteredBets.filter(bet => bet.outcome === 'Win').length;
+  const losses = filteredBets.filter(bet => bet.outcome === 'Loss').length;
+  const winRate = filteredBets.length > 0 ? (wins / filteredBets.length) * 100 : 0;
+  const roi = totalRisked > 0 ? (totalPNL / totalRisked) * 100 : 0;
+  const avgEdge = filteredBets.length > 0 ? filteredBets.reduce((sum, bet) => sum + bet.margin, 0) / filteredBets.length : 0;
 
-  // Candlestick data
-  const candlestickData = filteredDailyPNL.map(day => {
-    const open = (day.cumPNL || 0) - (day.totalPNL || 0);
-    const close = day.cumPNL || 0;
-    return {
-      date: day.date ? day.date.substring(0, 6) : '',
-      open,
-      close,
-      high: Math.max(open, close),
-      low: Math.min(open, close),
-      volume: day.totalRisk || 0,
-      pnl: day.totalPNL || 0,
-      color: (day.totalPNL || 0) >= 0 ? '#00ff88' : '#ff3366'
-    };
-  });
+  // Open positions (no outcome yet)
+  const openPositions = filteredBets.filter(bet => !bet.outcome || (bet.outcome !== 'Win' && bet.outcome !== 'Loss'));
+
+  // Recent trades (last 10 settled)
+  const recentTrades = filteredBets
+    .filter(bet => bet.outcome === 'Win' || bet.outcome === 'Loss')
+    .slice(-10)
+    .reverse();
 
   // Market performance
-  const marketTypes = ["Handicap", "Total", "Moneyline", "First Half Total"];
-  const marketPerformance = marketTypes.map(market => {
-    const marketTrades = settledBets.filter(t => t.market === market);
-    const marketPnL = marketTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
-    const marketWins = marketTrades.filter(t => t.outcome === "Win").length;
-    const marketTotal = marketTrades.length;
-    return {
-      market,
-      pnl: marketPnL,
-      winRate: marketTotal > 0 ? ((marketWins / marketTotal) * 100).toFixed(1) : 0,
-      trades: marketTotal
-    };
-  }).filter(m => m.trades > 0);
+  const marketPerformance = Object.entries(
+    filteredBets.reduce((acc, bet) => {
+      if (!acc[bet.market]) acc[bet.market] = { wins: 0, losses: 0, pnl: 0 };
+      if (bet.outcome === 'Win') acc[bet.market].wins++;
+      if (bet.outcome === 'Loss') acc[bet.market].losses++;
+      acc[bet.market].pnl += bet.pnl;
+      return acc;
+    }, {})
+  ).map(([market, data]) => ({
+    market,
+    ...data,
+    winRate: data.wins + data.losses > 0 ? (data.wins / (data.wins + data.losses)) * 100 : 0
+  }));
 
-  const recentTrades = settledBets.slice(-5).reverse();
-
-  if (loading && !betsData.length) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0e1a] text-white flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-screen bg-[#0f1419]">
         <div className="text-center">
-          <div className="text-4xl font-bold mb-4" style={{ fontFamily: 'Orbitron, sans-serif', color: '#00ff88' }}>
-            LOADING DASHBOARD...
-          </div>
-          <div className="text-sm text-gray-400" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-            Connecting to Google Sheets...
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#D4AF37] mx-auto mb-4"></div>
+          <div className="text-[#D4AF37] font-semibold" style={{ fontFamily: 'Inter, sans-serif' }}>
+            Loading Market Data...
           </div>
         </div>
       </div>
@@ -226,21 +213,21 @@ const processedBets = betsRows.slice(1).map(row => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#0a0e1a] text-white flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-screen bg-[#0f1419]">
         <div className="text-center max-w-2xl p-8">
-          <div className="text-4xl font-bold mb-4 text-red-500" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+          <div className="text-4xl font-bold mb-4 text-[#ef4444]" style={{ fontFamily: 'Inter, sans-serif' }}>
             CONNECTION ERROR
           </div>
-          <div className="text-sm text-gray-400 mb-6" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+          <div className="text-sm text-[#94a3b8] mb-6" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
             {error}
           </div>
-          <div className="text-xs text-gray-500" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+          <div className="text-xs text-[#64748b]" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
             Please check your API key configuration and ensure the Google Sheet is publicly accessible.
           </div>
           <button 
             onClick={fetchSheetData}
-            className="mt-6 px-6 py-3 bg-[#00ff88] text-black font-bold rounded-lg hover:bg-[#00ff88]/80 transition-all"
-            style={{ fontFamily: 'JetBrains Mono, monospace' }}
+            className="mt-6 px-6 py-3 bg-[#D4AF37] text-[#0f1419] font-bold rounded-lg hover:bg-[#F5A623] transition-all"
+            style={{ fontFamily: 'Inter, sans-serif' }}
           >
             RETRY CONNECTION
           </button>
@@ -250,294 +237,398 @@ const processedBets = betsRows.slice(1).map(row => {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0e1a] text-white font-sans overflow-x-hidden">
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=JetBrains+Mono:wght@400;600&display=swap');
-        
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-        }
-        
-        body {
-          background: #0a0e1a;
-          overflow-x: hidden;
-        }
-        
-        .glow {
-          text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor;
-        }
-        
-        .card {
-          background: linear-gradient(135deg, rgba(20, 30, 50, 0.8) 0%, rgba(10, 14, 26, 0.9) 100%);
-          border: 1px solid rgba(0, 255, 136, 0.2);
-          backdrop-filter: blur(10px);
-        }
-        
-        .stat-card {
-          background: linear-gradient(135deg, rgba(30, 40, 60, 0.6) 0%, rgba(15, 20, 35, 0.8) 100%);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          transition: all 0.3s ease;
-        }
-        
-        .stat-card:hover {
-          border-color: rgba(0, 255, 136, 0.5);
-          transform: translateY(-2px);
-          box-shadow: 0 8px 25px rgba(0, 255, 136, 0.15);
-        }
-        
-        .pulse {
-          animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-        
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.6; }
-        }
-        
-        .scan-line {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 2px;
-          background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.8), transparent);
-          animation: scan 3s linear infinite;
-        }
-        
-        @keyframes scan {
-          0% { transform: translateY(0); }
-          100% { transform: translateY(100vh); }
-        }
-        
-        .grid-bg {
-          background-image: 
-            linear-gradient(rgba(0, 255, 136, 0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0, 255, 136, 0.03) 1px, transparent 1px);
-          background-size: 50px 50px;
-        }
+    <div style={{ 
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #0f1419 0%, #1a1f2e 50%, #0f1419 100%)',
+      color: '#e8e6e3',
+      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif'
+    }}>
+      <style>
+        {`
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+          
+          body {
+            background: #0f1419;
+            margin: 0;
+            padding: 0;
+          }
+          
+          .card {
+            background: linear-gradient(135deg, rgba(26, 31, 46, 0.8) 0%, rgba(15, 20, 25, 0.9) 100%);
+            border: 1px solid rgba(212, 175, 55, 0.15);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            transition: all 0.3s ease;
+          }
+          
+          .card:hover {
+            border-color: rgba(212, 175, 55, 0.3);
+            box-shadow: 0 12px 48px rgba(212, 175, 55, 0.1);
+          }
+          
+          .stat-card {
+            background: linear-gradient(135deg, rgba(20, 30, 50, 0.6) 0%, rgba(15, 20, 35, 0.8) 100%);
+            border: 1px solid rgba(245, 166, 35, 0.2);
+            transition: all 0.3s ease;
+          }
+          
+          .stat-card:hover {
+            border-color: rgba(245, 166, 35, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(245, 166, 35, 0.15);
+          }
+          
+          .pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+          }
+          
+          @keyframes pulse {
+            0%, 100% {
+              opacity: 1;
+            }
+            50% {
+              opacity: .4;
+            }
+          }
+          
+          .glow-text {
+            text-shadow: 0 0 20px rgba(212, 175, 55, 0.5), 0 0 40px rgba(212, 175, 55, 0.2);
+          }
+          
+          button {
+            transition: all 0.2s ease;
+          }
+          
+          button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(245, 166, 35, 0.3);
+          }
+          
+          .gradient-gold {
+            background: linear-gradient(135deg, #D4AF37 0%, #F5A623 50%, #C9A35C 100%);
+          }
+          
+          .gradient-emerald {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+          }
+          
+          .gradient-ruby {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+          }
+        `}
+      </style>
 
-        .tab-button, .date-button {
-          padding: 0.5rem 1rem;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          background: transparent;
-          color: rgba(255, 255, 255, 0.6);
-          cursor: pointer;
-          transition: all 0.3s ease;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 0.75rem;
-          font-weight: 600;
-          text-transform: uppercase;
-        }
-
-        .tab-button:hover, .date-button:hover {
-          color: #00ff88;
-          border-color: rgba(0, 255, 136, 0.3);
-        }
-
-        .tab-button.active, .date-button.active {
-          background: rgba(0, 255, 136, 0.1);
-          border-color: #00ff88;
-          color: #00ff88;
-        }
-      `}</style>
-
-      <div className="fixed inset-0 grid-bg pointer-events-none opacity-30" />
-      <div className="scan-line pointer-events-none" />
-      
-      <header className="border-b border-[#00ff88]/20 bg-[#0a0e1a]/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-[1800px] mx-auto px-8 py-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-gray-700 to-gray-900 rounded-lg flex items-center justify-center border border-gray-600">
-                <div className="w-8 h-8 border-4 border-white/30 rotate-45" style={{ borderTopColor: 'white', borderRightColor: 'white' }}></div>
+      <header style={{ 
+        borderBottom: '1px solid rgba(212, 175, 55, 0.15)',
+        background: 'linear-gradient(180deg, rgba(26, 31, 46, 0.95) 0%, rgba(15, 20, 25, 0.9) 100%)',
+        backdropFilter: 'blur(10px)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 50
+      }}>
+        <div style={{ maxWidth: '1800px', margin: '0 auto', padding: '24px 32px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '24px' }}>
+            <div>
+              <div style={{ 
+                fontSize: '32px', 
+                fontWeight: '900', 
+                background: 'linear-gradient(135deg, #D4AF37 0%, #F5A623 50%, #C9A35C 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                fontFamily: 'Inter, sans-serif',
+                letterSpacing: '-0.02em'
+              }} className="glow-text">
+                KEYSTONE+
               </div>
+              <div style={{ 
+                fontSize: '12px', 
+                color: '#94a3b8',
+                fontWeight: '500',
+                letterSpacing: '0.1em',
+                marginTop: '4px',
+                fontFamily: 'Inter, sans-serif'
+              }}>
+                SPORTS TRADING DIVISION
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
               <div>
-                <h1 className="text-4xl font-black tracking-tighter glow" style={{ fontFamily: 'Orbitron, sans-serif', color: '#00ff88' }}>
-                  KEYSTONE+
-                </h1>
-                <p className="text-sm text-gray-400 mt-1" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-                  SPORTS TRADING DIVISION
-                </p>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: '#D4AF37', fontFamily: 'JetBrains Mono, monospace' }}>
+                  {currentTime.toLocaleTimeString('en-US')}
+                </div>
+                <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px', fontFamily: 'Inter, sans-serif' }}>
+                  Last Update: {lastUpdate?.toLocaleTimeString() || '--:--:--'}
+                </div>
               </div>
-            </div>
-            <div className="text-right">
-              <div className="text-3xl font-bold glow" style={{ fontFamily: 'Orbitron, sans-serif', color: '#00ff88' }}>
-                {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-              </div>
-              <div className="text-xs text-gray-400 mt-1" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-                {lastUpdate ? `Last Update: ${lastUpdate.toLocaleTimeString()}` : 'Connecting...'}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex gap-2">
-              <button className={`tab-button ${activeView === 'all' ? 'active' : ''}`} onClick={() => setActiveView('all')}>All Views</button>
-              <button className={`tab-button ${activeView === 'bets' ? 'active' : ''}`} onClick={() => setActiveView('bets')}>Bets</button>
-              <button className={`tab-button ${activeView === 'daily' ? 'active' : ''}`} onClick={() => setActiveView('daily')}>Daily P&L</button>
-              <button className={`tab-button ${activeView === 'summary' ? 'active' : ''}`} onClick={() => setActiveView('summary')}>Summary</button>
-            </div>
-            <div className="flex gap-2 items-center">
-              <button className={`date-button ${dateRange === 'all' ? 'active' : ''}`} onClick={() => setDateRange('all')}>All Time</button>
-              <button className={`date-button ${dateRange === '30d' ? 'active' : ''}`} onClick={() => setDateRange('30d')}>30 Days</button>
-              <button className={`date-button ${dateRange === '7d' ? 'active' : ''}`} onClick={() => setDateRange('7d')}>7 Days</button>
-              <button 
-                onClick={fetchSheetData}
-                className="ml-4 px-3 py-2 bg-[#00ff88]/10 border border-[#00ff88]/30 text-[#00ff88] hover:bg-[#00ff88]/20 transition-all text-xs font-bold rounded"
-                style={{ fontFamily: 'JetBrains Mono, monospace' }}
-              >
-                ⟳ REFRESH
-              </button>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-[1800px] mx-auto px-8 py-8">
+      <main style={{ maxWidth: '1800px', margin: '0 auto', padding: '32px' }}>
         
-        {(activeView === 'all' || activeView === 'summary') && summaryData && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-            <div className="stat-card rounded-xl p-6">
-              <div className="text-xs text-gray-400 mb-2" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-                {activeView === 'summary' ? 'MTD P&L' : 'TOTAL P&L'}
-              </div>
-              <div className={`text-4xl font-black ${(activeView === 'summary' ? summaryData.mtdPNL : totalPnL) >= 0 ? 'text-[#00ff88]' : 'text-[#ff3366]'}`} style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                ${(activeView === 'summary' ? summaryData.mtdPNL : totalPnL) >= 0 ? '+' : ''}
-                {(activeView === 'summary' ? summaryData.mtdPNL : totalPnL).toLocaleString()}
-              </div>
-              <div className="text-xs text-gray-500 mt-2" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-                {activeView === 'summary' ? summaryData.mtdTotalBets : totalTrades} TOTAL TRADES
-              </div>
-            </div>
+        {/* View Toggles */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '32px', flexWrap: 'wrap' }}>
+          {['all', 'bets', 'daily', 'summary'].map(view => (
+            <button
+              key={view}
+              onClick={() => setActiveView(view)}
+              style={{
+                padding: '12px 24px',
+                borderRadius: '8px',
+                border: activeView === view ? '1px solid #D4AF37' : '1px solid rgba(148, 163, 184, 0.2)',
+                background: activeView === view ? 'linear-gradient(135deg, #D4AF37 0%, #F5A623 100%)' : 'rgba(26, 31, 46, 0.6)',
+                color: activeView === view ? '#0f1419' : '#e8e6e3',
+                fontWeight: '600',
+                fontSize: '13px',
+                cursor: 'pointer',
+                fontFamily: 'Inter, sans-serif',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em'
+              }}
+            >
+              {view === 'all' ? 'All Views' : view === 'daily' ? 'Daily P&L' : view}
+            </button>
+          ))}
+        </div>
 
-            <div className="stat-card rounded-xl p-6">
-              <div className="text-xs text-gray-400 mb-2" style={{ fontFamily: 'JetBrains Mono, monospace' }}>WIN RATE</div>
-              <div className="text-4xl font-black text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                {activeView === 'summary' ? summaryData.mtdWinRate : winRate}%
-              </div>
-              <div className="text-xs text-gray-500 mt-2" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-                {wins}W / {losses}L
-              </div>
-            </div>
+        {/* Date Range Filters */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '32px', flexWrap: 'wrap' }}>
+          {[
+            { value: 'all', label: 'All Time' },
+            { value: '30d', label: '30 Days' },
+            { value: '7d', label: '7 Days' }
+          ].map(range => (
+            <button
+              key={range.value}
+              onClick={() => setDateRange(range.value)}
+              style={{
+                padding: '10px 20px',
+                borderRadius: '6px',
+                border: dateRange === range.value ? '1px solid #F5A623' : '1px solid rgba(148, 163, 184, 0.15)',
+                background: dateRange === range.value ? 'rgba(245, 166, 35, 0.15)' : 'transparent',
+                color: dateRange === range.value ? '#F5A623' : '#94a3b8',
+                fontWeight: '500',
+                fontSize: '12px',
+                cursor: 'pointer',
+                fontFamily: 'Inter, sans-serif'
+              }}
+            >
+              {range.label}
+            </button>
+          ))}
+          <button
+            onClick={fetchSheetData}
+            style={{
+              padding: '10px 20px',
+              borderRadius: '6px',
+              border: '1px solid rgba(148, 163, 184, 0.15)',
+              background: 'rgba(212, 175, 55, 0.1)',
+              color: '#D4AF37',
+              fontWeight: '500',
+              fontSize: '12px',
+              cursor: 'pointer',
+              fontFamily: 'Inter, sans-serif',
+              marginLeft: 'auto'
+            }}
+          >
+            ↻ REFRESH
+          </button>
+        </div>
 
-            <div className="stat-card rounded-xl p-6">
-              <div className="text-xs text-gray-400 mb-2" style={{ fontFamily: 'JetBrains Mono, monospace' }}>ROI</div>
-              <div className={`text-4xl font-black ${(activeView === 'summary' && summaryData ? summaryData.roi : roi) >= 0 ? 'text-[#00ff88]' : 'text-[#ff3366]'}`} style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                {(activeView === 'summary' && summaryData ? summaryData.roi : roi) >= 0 ? '+' : ''}
-                {(activeView === 'summary' && summaryData ? summaryData.roi : roi)}%
-              </div>
-              <div className="text-xs text-gray-500 mt-2" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-                ${totalRisked.toLocaleString()} RISKED
-              </div>
-            </div>
-
-            <div className="stat-card rounded-xl p-6">
-              <div className="text-xs text-gray-400 mb-2" style={{ fontFamily: 'JetBrains Mono, monospace' }}>AVG EDGE</div>
-              <div className="text-4xl font-black text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                {summaryData.avgEdge}%
-              </div>
-              <div className="text-xs text-gray-500 mt-2" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-                {summaryData.avgTradesPerDay.toFixed(1)} TRADES/DAY
-              </div>
+        {/* Summary Stats */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '32px' }}>
+          <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
+            <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em' }}>TOTAL P&L</div>
+            <div style={{ 
+              fontSize: '32px', 
+              fontWeight: '800', 
+              color: totalPNL >= 0 ? '#10b981' : '#ef4444',
+              fontFamily: 'Inter, sans-serif'
+            }}>
+              {totalPNL >= 0 ? '+' : ''}${totalPNL.toLocaleString()}
             </div>
           </div>
-        )}
+          
+          <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
+            <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em' }}>TOTAL TRADES</div>
+            <div style={{ fontSize: '32px', fontWeight: '800', color: '#e8e6e3', fontFamily: 'Inter, sans-serif' }}>{filteredBets.length}</div>
+          </div>
+          
+          <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
+            <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em' }}>WIN RATE</div>
+            <div style={{ fontSize: '32px', fontWeight: '800', color: '#e8e6e3', fontFamily: 'Inter, sans-serif' }}>{winRate.toFixed(1)}%</div>
+            <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', fontFamily: 'JetBrains Mono, monospace' }}>{wins}W / {losses}L</div>
+          </div>
+          
+          <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
+            <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em' }}>ROI</div>
+            <div style={{ 
+              fontSize: '32px', 
+              fontWeight: '800', 
+              color: roi >= 0 ? '#10b981' : '#ef4444',
+              fontFamily: 'Inter, sans-serif'
+            }}>
+              {roi >= 0 ? '+' : ''}{roi.toFixed(1)}%
+            </div>
+          </div>
+          
+          <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
+            <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em' }}>$ RISKED</div>
+            <div style={{ fontSize: '32px', fontWeight: '800', color: '#e8e6e3', fontFamily: 'Inter, sans-serif' }}>${totalRisked.toLocaleString()}</div>
+          </div>
+          
+          <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
+            <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em' }}>AVG EDGE</div>
+            <div style={{ fontSize: '32px', fontWeight: '800', color: '#D4AF37', fontFamily: 'Inter, sans-serif' }}>{avgEdge.toFixed(2)}%</div>
+          </div>
+          
+          <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
+            <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em' }}>TRADES/DAY</div>
+            <div style={{ fontSize: '32px', fontWeight: '800', color: '#e8e6e3', fontFamily: 'Inter, sans-serif' }}>{summaryData?.avgTradesPerDay.toFixed(1) || '0'}</div>
+          </div>
+        </div>
 
-        {(activeView === 'all' || activeView === 'daily') && candlestickData.length > 0 && (
-          <div className="card rounded-xl p-6 mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold" style={{ fontFamily: 'Orbitron, sans-serif', color: '#00ff88' }}>
-                CUMULATIVE P&L WITH VOLUME
+        {/* Cumulative PNL Chart */}
+        {(activeView === 'all' || activeView === 'daily') && filteredDaily.length > 0 && (
+          <div className="card" style={{ borderRadius: '16px', padding: '32px', marginBottom: '32px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+              <h2 style={{ 
+                fontSize: '20px', 
+                fontWeight: '700', 
+                fontFamily: 'Inter, sans-serif',
+                color: '#D4AF37'
+              }}>
+                Cumulative Performance
               </h2>
-              <div className="pulse w-3 h-3 rounded-full bg-[#00ff88]" />
+              <div className="pulse" style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#D4AF37' }} />
             </div>
             <ResponsiveContainer width="100%" height={400}>
-              <ComposedChart data={candlestickData}>
+              <ComposedChart data={filteredDaily}>
                 <defs>
-                  <linearGradient id="volumeGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#00ff88" stopOpacity={0.8}/>
-                    <stop offset="100%" stopColor="#00ff88" stopOpacity={0.1}/>
+                  <linearGradient id="colorPnl" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#D4AF37" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#D4AF37" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.1)" />
                 <XAxis 
                   dataKey="date" 
-                  stroke="rgba(255,255,255,0.3)" 
-                  style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px' }}
+                  stroke="rgba(148, 163, 184, 0.3)" 
+                  style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '10px' }}
+                  tick={{ fill: '#94a3b8' }}
                 />
                 <YAxis 
-                  yAxisId="pnl"
-                  stroke="rgba(255,255,255,0.3)" 
-                  style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px' }}
+                  yAxisId="left"
+                  stroke="rgba(148, 163, 184, 0.3)" 
+                  style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '10px' }}
                   tickFormatter={(value) => `$${(value/1000).toFixed(0)}k`}
+                  tick={{ fill: '#94a3b8' }}
                 />
                 <YAxis 
-                  yAxisId="volume"
+                  yAxisId="right"
                   orientation="right"
-                  stroke="rgba(255,255,255,0.3)" 
-                  style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px' }}
-                  tickFormatter={(value) => `$${(value/1000).toFixed(0)}k`}
+                  stroke="rgba(148, 163, 184, 0.3)" 
+                  style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '10px' }}
+                  tick={{ fill: '#94a3b8' }}
                 />
                 <Tooltip 
                   contentStyle={{ 
-                    background: 'rgba(10, 14, 26, 0.95)', 
-                    border: '1px solid rgba(0, 255, 136, 0.3)',
+                    background: 'rgba(15, 20, 25, 0.95)', 
+                    border: '1px solid rgba(212, 175, 55, 0.3)',
                     borderRadius: '8px',
                     fontFamily: 'JetBrains Mono, monospace',
-                    fontSize: '12px'
+                    fontSize: '11px',
+                    backdropFilter: 'blur(10px)'
                   }}
+                  labelStyle={{ color: '#D4AF37', fontWeight: '600' }}
                 />
-                <Bar yAxisId="volume" dataKey="volume" fill="url(#volumeGradient)" opacity={0.3} />
-                <Line 
-                  yAxisId="pnl"
+                <Area 
+                  yAxisId="left"
                   type="monotone" 
-                  dataKey="close" 
-                  stroke="#ffffff" 
+                  dataKey="cumPNL" 
+                  fill="url(#colorPnl)" 
+                  stroke="#D4AF37"
                   strokeWidth={2}
-                  dot={false}
+                />
+                <Bar 
+                  yAxisId="right"
+                  dataKey="numBets" 
+                  fill="rgba(100, 116, 139, 0.4)"
+                  radius={[4, 4, 0, 0]}
                 />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
         )}
 
-        {(activeView === 'all' || activeView === 'bets') && openBets.length > 0 && (
-          <div className="card rounded-xl p-6 mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold" style={{ fontFamily: 'Orbitron, sans-serif', color: '#00ff88' }}>
-                OPEN POSITIONS ({openBets.length})
+        {/* Open Positions */}
+        {openPositions.length > 0 && (activeView === 'all' || activeView === 'bets') && (
+          <div className="card" style={{ borderRadius: '16px', padding: '32px', marginBottom: '32px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+              <h2 style={{ 
+                fontSize: '20px', 
+                fontWeight: '700', 
+                fontFamily: 'Inter, sans-serif',
+                color: '#F5A623'
+              }}>
+                Open Positions
               </h2>
-              <div className="pulse w-3 h-3 rounded-full bg-[#00ff88]" />
+              <div className="pulse" style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#F5A623' }} />
             </div>
-            <div className="space-y-3">
-              {openBets.slice(0, 10).map((trade, idx) => (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {openPositions.map((trade, idx) => (
                 <div 
                   key={idx}
-                  className="bg-gradient-to-r from-[#141e32]/40 to-transparent rounded-lg p-4 border border-yellow-500/30 hover:border-yellow-500/50 transition-all"
+                  style={{
+                    background: 'linear-gradient(90deg, rgba(245, 166, 35, 0.05) 0%, transparent 100%)',
+                    borderRadius: '12px',
+                    padding: '20px',
+                    border: '1px solid rgba(245, 166, 35, 0.2)',
+                    transition: 'all 0.2s'
+                  }}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="text-white font-bold" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                        <span style={{ color: '#e8e6e3', fontWeight: '600', fontFamily: 'Inter, sans-serif', fontSize: '15px' }}>
                           {trade.fixture}
                         </span>
-                        <span className="text-xs px-2 py-1 rounded bg-[#00ff88]/10 text-[#00ff88]" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                        <span style={{ 
+                          fontSize: '11px', 
+                          padding: '4px 10px', 
+                          borderRadius: '6px', 
+                          background: 'rgba(212, 175, 55, 0.15)',
+                          color: '#D4AF37',
+                          fontFamily: 'Inter, sans-serif',
+                          fontWeight: '600'
+                        }}>
                           {trade.market}
                         </span>
-                        <span className="text-xs px-2 py-1 rounded bg-yellow-500/20 text-yellow-500" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                        <span style={{ 
+                          fontSize: '11px', 
+                          padding: '4px 10px', 
+                          borderRadius: '6px', 
+                          background: 'rgba(245, 166, 35, 0.2)',
+                          color: '#F5A623',
+                          fontFamily: 'Inter, sans-serif',
+                          fontWeight: '600'
+                        }}>
                           PENDING
                         </span>
                       </div>
-                      <div className="flex gap-6 text-xs text-gray-400" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                      <div style={{ display: 'flex', gap: '24px', fontSize: '11px', color: '#94a3b8', fontFamily: 'JetBrains Mono, monospace' }}>
                         <span>SELECTION: {trade.selection}{trade.handicap ? ` (${trade.handicap > 0 ? '+' : ''}${trade.handicap})` : ''}</span>
                         <span>ODDS: {trade.odds}</span>
                         <span>STAKE: ${trade.betAmount.toLocaleString()}</span>
                         <span>MARGIN: {trade.margin}%</span>
                       </div>
                     </div>
-                    <div className="text-2xl font-black text-yellow-500" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                    <div style={{ 
+                      fontSize: '20px', 
+                      fontWeight: '800', 
+                      color: '#F5A623',
+                      fontFamily: 'Inter, sans-serif'
+                    }}>
                       OPEN
                     </div>
                   </div>
@@ -547,76 +638,122 @@ const processedBets = betsRows.slice(1).map(row => {
           </div>
         )}
 
+        {/* Market Performance */}
         {(activeView === 'all' || activeView === 'bets') && marketPerformance.length > 0 && (
-          <div className="card rounded-xl p-6 mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold" style={{ fontFamily: 'Orbitron, sans-serif', color: '#00ff88' }}>
-                PERFORMANCE BY MARKET
+          <div className="card" style={{ borderRadius: '16px', padding: '32px', marginBottom: '32px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+              <h2 style={{ 
+                fontSize: '20px', 
+                fontWeight: '700', 
+                fontFamily: 'Inter, sans-serif',
+                color: '#D4AF37'
+              }}>
+                Performance by Market
               </h2>
-              <div className="pulse w-3 h-3 rounded-full bg-[#00ff88]" />
+              <div className="pulse" style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#D4AF37' }} />
             </div>
-            <ResponsiveContainer width="100%" height={250}>
+            <ResponsiveContainer width="100%" height={300}>
               <BarChart data={marketPerformance}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.1)" />
                 <XAxis 
                   dataKey="market" 
-                  stroke="rgba(255,255,255,0.3)" 
-                  style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px' }}
+                  stroke="rgba(148, 163, 184, 0.3)" 
+                  style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', fontWeight: '500' }}
+                  tick={{ fill: '#94a3b8' }}
                 />
                 <YAxis 
-                  stroke="rgba(255,255,255,0.3)" 
-                  style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px' }}
+                  stroke="rgba(148, 163, 184, 0.3)" 
+                  style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '10px' }}
                   tickFormatter={(value) => `$${value.toLocaleString()}`}
+                  tick={{ fill: '#94a3b8' }}
                 />
                 <Tooltip 
                   contentStyle={{ 
-                    background: 'rgba(10, 14, 26, 0.95)', 
-                    border: '1px solid rgba(0, 255, 136, 0.3)',
+                    background: 'rgba(15, 20, 25, 0.95)', 
+                    border: '1px solid rgba(212, 175, 55, 0.3)',
                     borderRadius: '8px',
                     fontFamily: 'JetBrains Mono, monospace',
-                    fontSize: '12px'
+                    fontSize: '11px'
                   }}
+                  labelStyle={{ color: '#D4AF37', fontWeight: '600' }}
                 />
-                <Bar dataKey="pnl" fill="#00ff88" radius={[8, 8, 0, 0]} />
+                <Bar 
+                  dataKey="pnl" 
+                  fill="#D4AF37" 
+                  radius={[8, 8, 0, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
         )}
 
+        {/* Recent Trades */}
         {(activeView === 'all' || activeView === 'bets') && recentTrades.length > 0 && (
-          <div className="card rounded-xl p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold" style={{ fontFamily: 'Orbitron, sans-serif', color: '#00ff88' }}>
-                RECENT SETTLED TRADES
+          <div className="card" style={{ borderRadius: '16px', padding: '32px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+              <h2 style={{ 
+                fontSize: '20px', 
+                fontWeight: '700', 
+                fontFamily: 'Inter, sans-serif',
+                color: '#D4AF37'
+              }}>
+                Recent Settled Trades
               </h2>
-              <div className="pulse w-3 h-3 rounded-full bg-[#00ff88]" />
+              <div className="pulse" style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#D4AF37' }} />
             </div>
-            <div className="space-y-3">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {recentTrades.map((trade, idx) => (
                 <div 
                   key={idx}
-                  className="bg-gradient-to-r from-[#141e32]/40 to-transparent rounded-lg p-4 border border-white/5 hover:border-[#00ff88]/30 transition-all"
+                  style={{
+                    background: 'linear-gradient(90deg, rgba(26, 31, 46, 0.4) 0%, transparent 100%)',
+                    borderRadius: '12px',
+                    padding: '18px',
+                    border: '1px solid rgba(148, 163, 184, 0.1)',
+                    transition: 'all 0.2s'
+                  }}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="text-white font-bold" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
+                        <span style={{ color: '#e8e6e3', fontWeight: '600', fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
                           {trade.fixture}
                         </span>
-                        <span className="text-xs px-2 py-1 rounded bg-[#00ff88]/10 text-[#00ff88]" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                        <span style={{ 
+                          fontSize: '11px', 
+                          padding: '4px 10px', 
+                          borderRadius: '6px', 
+                          background: 'rgba(212, 175, 55, 0.1)',
+                          color: '#D4AF37',
+                          fontFamily: 'Inter, sans-serif',
+                          fontWeight: '500'
+                        }}>
                           {trade.market}
                         </span>
-                        <span className={`text-xs px-2 py-1 rounded ${trade.outcome === 'Win' ? 'bg-[#00ff88]/20 text-[#00ff88]' : 'bg-[#ff3366]/20 text-[#ff3366]'}`} style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                        <span style={{ 
+                          fontSize: '11px', 
+                          padding: '4px 10px', 
+                          borderRadius: '6px', 
+                          background: trade.outcome === 'Win' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                          color: trade.outcome === 'Win' ? '#10b981' : '#ef4444',
+                          fontFamily: 'Inter, sans-serif',
+                          fontWeight: '600'
+                        }}>
                           {trade.outcome}
                         </span>
                       </div>
-                      <div className="flex gap-6 text-xs text-gray-400" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                      <div style={{ display: 'flex', gap: '20px', fontSize: '11px', color: '#94a3b8', fontFamily: 'JetBrains Mono, monospace' }}>
                         <span>SELECTION: {trade.selection}{trade.handicap ? ` (${trade.handicap > 0 ? '+' : ''}${trade.handicap})` : ''}</span>
                         <span>ODDS: {trade.odds}</span>
                         <span>STAKE: ${trade.betAmount.toLocaleString()}</span>
                       </div>
                     </div>
-                    <div className={`text-2xl font-black ${trade.pnl >= 0 ? 'text-[#00ff88]' : 'text-[#ff3366]'}`} style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                    <div style={{ 
+                      fontSize: '24px', 
+                      fontWeight: '800', 
+                      color: trade.pnl >= 0 ? '#10b981' : '#ef4444',
+                      fontFamily: 'Inter, sans-serif'
+                    }}>
                       {trade.pnl >= 0 ? '+' : ''}${trade.pnl.toLocaleString()}
                     </div>
                   </div>
@@ -626,49 +763,50 @@ const processedBets = betsRows.slice(1).map(row => {
           </div>
         )}
 
+        {/* Summary View Additional Stats */}
         {activeView === 'summary' && summaryData && (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mt-8">
-            <div className="stat-card rounded-xl p-6">
-              <div className="text-xs text-gray-400 mb-2" style={{ fontFamily: 'JetBrains Mono, monospace' }}>SIDES WIN RATE</div>
-              <div className="text-3xl font-black text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>{summaryData.sidesWinRate}%</div>
-              <div className="text-xs text-gray-500 mt-2" style={{ fontFamily: 'JetBrains Mono, monospace' }}>HOLD: {summaryData.sidesHold}%</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px', marginTop: '32px' }}>
+            <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
+              <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500' }}>SIDES WIN RATE</div>
+              <div style={{ fontSize: '28px', fontWeight: '800', color: '#e8e6e3', fontFamily: 'Inter, sans-serif' }}>{summaryData.sidesWinRate}%</div>
+              <div style={{ fontSize: '11px', color: '#64748b', marginTop: '8px', fontFamily: 'JetBrains Mono, monospace' }}>HOLD: {summaryData.sidesHold}%</div>
             </div>
-            <div className="stat-card rounded-xl p-6">
-              <div className="text-xs text-gray-400 mb-2" style={{ fontFamily: 'JetBrains Mono, monospace' }}>TOTALS WIN RATE</div>
-              <div className="text-3xl font-black text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>{summaryData.totalsWinRate}%</div>
-              <div className="text-xs text-gray-500 mt-2" style={{ fontFamily: 'JetBrains Mono, monospace' }}>HOLD: {summaryData.totalsHold}%</div>
+            <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
+              <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500' }}>TOTALS WIN RATE</div>
+              <div style={{ fontSize: '28px', fontWeight: '800', color: '#e8e6e3', fontFamily: 'Inter, sans-serif' }}>{summaryData.totalsWinRate}%</div>
+              <div style={{ fontSize: '11px', color: '#64748b', marginTop: '8px', fontFamily: 'JetBrains Mono, monospace' }}>HOLD: {summaryData.totalsHold}%</div>
             </div>
-            <div className="stat-card rounded-xl p-6">
-              <div className="text-xs text-gray-400 mb-2" style={{ fontFamily: 'JetBrains Mono, monospace' }}>AVG ODDS</div>
-              <div className="text-3xl font-black text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>{summaryData.avgOdds}</div>
-              <div className="text-xs text-gray-500 mt-2" style={{ fontFamily: 'JetBrains Mono, monospace' }}>MODEL: {summaryData.avgModelOdds}</div>
+            <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
+              <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500' }}>AVG ODDS</div>
+              <div style={{ fontSize: '28px', fontWeight: '800', color: '#e8e6e3', fontFamily: 'Inter, sans-serif' }}>{summaryData.avgOdds}</div>
+              <div style={{ fontSize: '11px', color: '#64748b', marginTop: '8px', fontFamily: 'JetBrains Mono, monospace' }}>MODEL: {summaryData.avgModelOdds}</div>
             </div>
-            <div className="stat-card rounded-xl p-6">
-              <div className="text-xs text-gray-400 mb-2" style={{ fontFamily: 'JetBrains Mono, monospace' }}>BANKROLL</div>
-              <div className="text-3xl font-black text-[#00ff88]" style={{ fontFamily: 'Orbitron, sans-serif' }}>${summaryData.bankroll.toLocaleString()}</div>
-              <div className="text-xs text-gray-500 mt-2" style={{ fontFamily: 'JetBrains Mono, monospace' }}>DURATION: {summaryData.duration} DAYS</div>
+            <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
+              <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500' }}>BANKROLL</div>
+              <div style={{ fontSize: '28px', fontWeight: '800', color: '#D4AF37', fontFamily: 'Inter, sans-serif' }}>${summaryData.bankroll.toLocaleString()}</div>
+              <div style={{ fontSize: '11px', color: '#64748b', marginTop: '8px', fontFamily: 'JetBrains Mono, monospace' }}>DURATION: {summaryData.duration} DAYS</div>
             </div>
-            <div className="stat-card rounded-xl p-6">
-              <div className="text-xs text-gray-400 mb-2" style={{ fontFamily: 'JetBrains Mono, monospace' }}>W/L WEEKS</div>
-              <div className="text-3xl font-black text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>{summaryData.wlWeeks}</div>
-              <div className="text-xs text-gray-500 mt-2" style={{ fontFamily: 'JetBrains Mono, monospace' }}>AVG TIME: {summaryData.avgTime}</div>
+            <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
+              <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500' }}>W/L WEEKS</div>
+              <div style={{ fontSize: '28px', fontWeight: '800', color: '#e8e6e3', fontFamily: 'Inter, sans-serif' }}>{summaryData.wlWeeks}</div>
+              <div style={{ fontSize: '11px', color: '#64748b', marginTop: '8px', fontFamily: 'JetBrains Mono, monospace' }}>AVG TIME: {summaryData.avgTime}</div>
             </div>
-            <div className="stat-card rounded-xl p-6">
-              <div className="text-xs text-gray-400 mb-2" style={{ fontFamily: 'JetBrains Mono, monospace' }}>MTD NOTIONAL</div>
-              <div className="text-3xl font-black text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>${(summaryData.mtdNotional/1000000).toFixed(2)}M</div>
-              <div className="text-xs text-gray-500 mt-2" style={{ fontFamily: 'JetBrains Mono, monospace' }}>AVG BET: {summaryData.avgBetSize}%</div>
+            <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
+              <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500' }}>MTD NOTIONAL</div>
+              <div style={{ fontSize: '28px', fontWeight: '800', color: '#e8e6e3', fontFamily: 'Inter, sans-serif' }}>${(summaryData.mtdNotional/1000000).toFixed(2)}M</div>
+              <div style={{ fontSize: '11px', color: '#64748b', marginTop: '8px', fontFamily: 'JetBrains Mono, monospace' }}>AVG BET: {summaryData.avgBetSize}%</div>
             </div>
           </div>
         )}
 
       </main>
 
-      <footer className="border-t border-[#00ff88]/20 mt-12 py-6">
-        <div className="max-w-[1800px] mx-auto px-8 text-center">
-          <p className="text-xs text-gray-500" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-            KEYSTONE+ SPORTS TRADING DIVISION • REAL-TIME ANALYTICS ENGINE v3.0 • LIVE DATA FEED
+      <footer style={{ borderTop: '1px solid rgba(212, 175, 55, 0.15)', marginTop: '48px', padding: '24px 0' }}>
+        <div style={{ maxWidth: '1800px', margin: '0 auto', padding: '0 32px', textAlign: 'center' }}>
+          <p style={{ fontSize: '11px', color: '#64748b', fontFamily: 'Inter, sans-serif', fontWeight: '500' }}>
+            KEYSTONE+ SPORTS TRADING DIVISION • REAL-TIME ANALYTICS ENGINE v3.0
           </p>
-          <p className="text-xs text-gray-600 mt-1" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+          <p style={{ fontSize: '10px', color: '#475569', marginTop: '8px', fontFamily: 'JetBrains Mono, monospace' }}>
             Last Sync: {lastUpdate?.toLocaleString() || 'Initializing...'} • Auto-Refresh: 60s
           </p>
         </div>
