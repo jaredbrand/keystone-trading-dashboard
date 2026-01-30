@@ -58,8 +58,14 @@ export default function LiveTradingDashboard() {
         betsHeaders.forEach((header, idx) => {
           bet[header] = row[idx] || '';
         });
-        // Column R is at index 17 (18th column, zero-indexed)
+        // Column R is at index 17 (18th column, zero-indexed) - Confirmed checkbox
         const isConfirmed = row[17] === 'TRUE' || row[17] === true;
+        
+        // Extract values from correct columns
+        // Column N (index 13) = Bet Amount
+        // Column U (index 20) = PNL
+        const betAmount = parseFloat(row[13]?.replace(/[$,]/g, '')) || 0;
+        const pnl = parseFloat(row[20]?.replace(/[$,()]/g, '').replace('-', '-')) || 0;
         
         return {
           game: bet['Game Number'],
@@ -70,9 +76,9 @@ export default function LiveTradingDashboard() {
           handicap: bet['Handicap'] ? parseFloat(bet['Handicap']) : null,
           odds: parseFloat(bet['Odds']) || 0,
           margin: parseFloat(bet['Margin']?.replace('%', '')) || 0,
-          betAmount: parseFloat(bet['Bet Amount']?.replace(/[$,]/g, '')) || 0,
+          betAmount: betAmount,
           outcome: bet['Outcome'] || '',
-          pnl: parseFloat(bet['PNL']?.replace(/[$,()]/g, '').replace('-', '-')) || 0,
+          pnl: pnl,
           confirmed: isConfirmed
         };
       }).filter(bet => bet.fixture && bet.confirmed); // Only confirmed bets
