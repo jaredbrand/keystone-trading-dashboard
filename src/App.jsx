@@ -72,7 +72,7 @@ const processedBets = betsRows.slice(1).map(row => {
     pnl: parseFloat(bet['PNL']?.replace(/[$,()]/g, '').replace('-', '-')) || 0,
     confirmed: bet['Confirmed'] // Store the confirmed status
   };
-}).filter(bet => bet.fixture && bet.confirmed === 'TRUE'); // Only confirmed bets
+}).filter(bet => bet.fixture && (bet.confirmed === 'TRUE' || bet.confirmed === true || bet.confirmed === 'true' || bet.confirmed === '✓'));
       
       // Process Daily PNL Data
       const dailyRows = dailyJson.values || [];
