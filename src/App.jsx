@@ -165,18 +165,20 @@ export default function LiveTradingDashboard() {
   const filteredBets = getFilteredData(betsData);
   const filteredDaily = getFilteredData(dailyPNLData);
 
-  // Calculate metrics from filtered data
+  // Calculate metrics dynamically from filtered bets data (so date filters work)
   const totalPNL = filteredBets.reduce((sum, bet) => sum + bet.pnl, 0);
   const totalTraded = filteredBets.reduce((sum, bet) => sum + bet.betAmount, 0);
   const wins = filteredBets.filter(bet => bet.outcome === 'Win').length;
   const losses = filteredBets.filter(bet => bet.outcome === 'Loss').length;
   const totalSettled = wins + losses;
   const winRate = totalSettled > 0 ? (wins / totalSettled) * 100 : 0;
-  const roi = totalTraded > 0 ? (totalPNL / totalTraded) * 100 : 0;
-  const avgEdge = filteredBets.length > 0 ? filteredBets.reduce((sum, bet) => sum + bet.margin, 0) / filteredBets.length : 0;
   
-  // Calculate Hold % (similar to avgEdge but as a percentage of amount traded)
-  const holdPercentage = summaryData?.avgHold || avgEdge;
+  // Hold % = (PNL / Traded) * 100
+  const holdPercentage = totalTraded > 0 ? (totalPNL / totalTraded) * 100 : 0;
+  
+  // Calculate trades per day from filtered data
+  const uniqueDates = [...new Set(filteredBets.map(bet => bet.date).filter(d => d))];
+  const tradesPerDay = uniqueDates.length > 0 ? filteredBets.length / uniqueDates.length : 0;
 
   // Open positions (no outcome yet)
   const openPositions = filteredBets.filter(bet => !bet.outcome || (bet.outcome !== 'Win' && bet.outcome !== 'Loss'));
@@ -461,19 +463,6 @@ export default function LiveTradingDashboard() {
           <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
             <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em' }}>WIN RATE</div>
             <div style={{ fontSize: '32px', fontWeight: '800', color: '#e8e6e3', fontFamily: 'Inter, sans-serif' }}>{winRate.toFixed(1)}%</div>
-            <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', fontFamily: 'JetBrains Mono, monospace' }}>{wins}W / {losses}L</div>
-          </div>
-          
-          <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
-            <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em' }}>ROI</div>
-            <div style={{ 
-              fontSize: '32px', 
-              fontWeight: '800', 
-              color: roi >= 0 ? '#10b981' : '#ef4444',
-              fontFamily: 'Inter, sans-serif'
-            }}>
-              {roi >= 0 ? '+' : ''}{roi.toFixed(1)}%
-            </div>
           </div>
           
           <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
@@ -483,17 +472,19 @@ export default function LiveTradingDashboard() {
           
           <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
             <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em' }}>HOLD %</div>
-            <div style={{ fontSize: '32px', fontWeight: '800', color: '#D4AF37', fontFamily: 'Inter, sans-serif' }}>{holdPercentage.toFixed(2)}%</div>
-          </div>
-          
-          <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
-            <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em' }}>AVG EDGE</div>
-            <div style={{ fontSize: '32px', fontWeight: '800', color: '#D4AF37', fontFamily: 'Inter, sans-serif' }}>{avgEdge.toFixed(2)}%</div>
+            <div style={{ 
+              fontSize: '32px', 
+              fontWeight: '800', 
+              color: holdPercentage >= 0 ? '#10b981' : '#ef4444',
+              fontFamily: 'Inter, sans-serif'
+            }}>
+              {holdPercentage >= 0 ? '+' : ''}{holdPercentage.toFixed(2)}%
+            </div>
           </div>
           
           <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
             <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em' }}>TRADES/DAY</div>
-            <div style={{ fontSize: '32px', fontWeight: '800', color: '#e8e6e3', fontFamily: 'Inter, sans-serif' }}>{summaryData?.avgTradesPerDay.toFixed(1) || '0'}</div>
+            <div style={{ fontSize: '32px', fontWeight: '800', color: '#e8e6e3', fontFamily: 'Inter, sans-serif' }}>{tradesPerDay.toFixed(1)}</div>
           </div>
         </div>
 
