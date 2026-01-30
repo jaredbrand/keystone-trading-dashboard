@@ -58,6 +58,9 @@ const processedBets = betsRows.slice(1).map(row => {
   betsHeaders.forEach((header, idx) => {
     bet[header] = row[idx] || '';
   });
+  // Column R is at index 17 (18th column, zero-indexed)
+  const isConfirmed = row[17] === 'TRUE' || row[17] === true;
+  
   return {
     game: bet['Game Number'],
     fixture: bet['Fixture'],
@@ -70,16 +73,9 @@ const processedBets = betsRows.slice(1).map(row => {
     betAmount: parseFloat(bet['Bet Amount']?.replace(/[$,]/g, '')) || 0,
     outcome: bet['Outcome'] || '',
     pnl: parseFloat(bet['PNL']?.replace(/[$,()]/g, '').replace('-', '-')) || 0,
-    confirmed: bet['Confirmed']
+    confirmed: isConfirmed
   };
-}).filter(bet => {
-  // Debug: log first 5 to see what confirmed values look like
-  if (bet.game) {
-    console.log('Game:', bet.game, 'Confirmed:', bet.confirmed, 'Type:', typeof bet.confirmed);
-  }
-  // For now, show everything so we can see the data
-  return bet.fixture;
-});
+}).filter(bet => bet.fixture && bet.confirmed);
       
       // Process Daily PNL Data
       const dailyRows = dailyJson.values || [];
