@@ -71,7 +71,7 @@ export default function LiveTradingDashboard() {
           outcome: bet['Outcome'] || '',
           pnl: parseFloat(bet['PNL']?.replace(/[$,()]/g, '').replace('-', '-')) || 0
         };
-      }).filter(bet => bet.fixture); // Filter out empty rows
+      }).filter(bet => bet.fixture && bet['Confirmed'] === 'TRUE'); // Only confirmed bets
 
       // Process Daily PNL Data
       const dailyRows = dailyJson.values || [];
