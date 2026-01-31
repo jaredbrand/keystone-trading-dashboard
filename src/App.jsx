@@ -15,7 +15,7 @@ export default function LiveTradingDashboard() {
   const [summaryData, setSummaryData] = useState(null);
 
   // Google Sheets Configuration
-  const SHEET_ID = '1RBeguOmsBzvR2GO_Jm3JTT_QUsUgVc-TtOWxuR5ExsY';
+  const SHEET_ID = '12ERObVmJ6Zq8C_tMoWLPHcx_fkHvNBB6RfbMcEtOa5Q';
   const API_KEY = 'AIzaSyBTtxKBss2sKNHFYKeYHj0CedPBVN9GxEs';
   
   // Tab names and ranges
