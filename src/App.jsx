@@ -168,7 +168,18 @@ export default function LiveTradingDashboard() {
   // Filter data by date range
   const getFilteredData = (data, dateField = 'date') => {
     if (dateRange === 'all') return data;
+    
     const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // Start of today
+    
+    if (dateRange === 'today') {
+      return data.filter(item => {
+        const itemDate = new Date(item[dateField]);
+        const itemDateOnly = new Date(itemDate.getFullYear(), itemDate.getMonth(), itemDate.getDate());
+        return itemDateOnly.getTime() === today.getTime();
+      });
+    }
+    
     const days = dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 0;
     if (days === 0) return data;
     
@@ -420,7 +431,8 @@ export default function LiveTradingDashboard() {
           {[
             { value: 'all', label: 'All Time' },
             { value: '30d', label: '30 Days' },
-            { value: '7d', label: '7 Days' }
+            { value: '7d', label: '7 Days' },
+            { value: 'today', label: 'Today' }
           ].map(range => (
             <button
               key={range.value}
