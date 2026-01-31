@@ -9,6 +9,14 @@ export default function LiveTradingDashboard() {
   const [error, setError] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(null);
   
+  // Password protection
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  
+  // Set your password here (change this to whatever you want)
+  const DASHBOARD_PASSWORD = 'keystone2025';
+  
   // Data states
   const [betsData, setBetsData] = useState([]);
   const [dailyPNLData, setDailyPNLData] = useState([]);
@@ -22,6 +30,27 @@ export default function LiveTradingDashboard() {
   const BETS_RANGE = 'bets_week_1!A:V';
   const DAILY_PNL_RANGE = 'DailyPNL!A:O';
   const SUMMARY_RANGE = 'SummaryStats!A:P';
+
+  // Check for saved password in sessionStorage
+  useEffect(() => {
+    const savedAuth = sessionStorage.getItem('keystoneAuth');
+    if (savedAuth === 'true') {
+      setIsAuthenticated(true);
+    }
+  }, []);
+
+  // Handle password submission
+  const handlePasswordSubmit = (e) => {
+    e.preventDefault();
+    if (passwordInput === DASHBOARD_PASSWORD) {
+      setIsAuthenticated(true);
+      sessionStorage.setItem('keystoneAuth', 'true');
+      setPasswordError('');
+    } else {
+      setPasswordError('Incorrect password. Please try again.');
+      setPasswordInput('');
+    }
+  };
 
   // Clock update
   useEffect(() => {
@@ -153,17 +182,21 @@ export default function LiveTradingDashboard() {
 
   // Initial data fetch
   useEffect(() => {
-    fetchSheetData();
-  }, []);
+    if (isAuthenticated) {
+      fetchSheetData();
+    }
+  }, [isAuthenticated]);
 
   // Auto-refresh every 60 seconds
   useEffect(() => {
-    const refreshInterval = setInterval(() => {
-      fetchSheetData();
-    }, 60000); // 60 seconds
+    if (isAuthenticated) {
+      const refreshInterval = setInterval(() => {
+        fetchSheetData();
+      }, 60000); // 60 seconds
 
-    return () => clearInterval(refreshInterval);
-  }, []);
+      return () => clearInterval(refreshInterval);
+    }
+  }, [isAuthenticated]);
 
   // Filter data by date range
   const getFilteredData = (data, dateField = 'date') => {
@@ -232,6 +265,112 @@ export default function LiveTradingDashboard() {
     ...data,
     winRate: data.wins + data.losses > 0 ? (data.wins / (data.wins + data.losses)) * 100 : 0
   }));
+
+  // Show password screen if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div style={{ 
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #0f1419 0%, #1a1f2e 50%, #0f1419 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: 'Inter, sans-serif'
+      }}>
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(26, 31, 46, 0.8) 0%, rgba(15, 20, 25, 0.9) 100%)',
+          border: '1px solid rgba(212, 175, 55, 0.15)',
+          borderRadius: '16px',
+          padding: '48px',
+          maxWidth: '400px',
+          width: '100%',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)'
+        }}>
+          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+            <div style={{ 
+              fontSize: '32px', 
+              fontWeight: '900', 
+              background: 'linear-gradient(135deg, #D4AF37 0%, #F5A623 50%, #C9A35C 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              marginBottom: '8px'
+            }}>
+              KEYSTONE+
+            </div>
+            <div style={{ 
+              fontSize: '12px', 
+              color: '#94a3b8',
+              fontWeight: '500',
+              letterSpacing: '0.1em'
+            }}>
+              SPORTS TRADING DIVISION
+            </div>
+          </div>
+          
+          <form onSubmit={handlePasswordSubmit}>
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ 
+                display: 'block',
+                fontSize: '11px',
+                color: '#94a3b8',
+                marginBottom: '8px',
+                fontWeight: '500',
+                letterSpacing: '0.05em'
+              }}>
+                ENTER PASSWORD
+              </label>
+              <input
+                type="password"
+                value={passwordInput}
+                onChange={(e) => setPasswordInput(e.target.value)}
+                placeholder="••••••••"
+                autoFocus
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  background: 'rgba(15, 20, 25, 0.6)',
+                  border: passwordError ? '1px solid #ef4444' : '1px solid rgba(148, 163, 184, 0.2)',
+                  borderRadius: '8px',
+                  color: '#e8e6e3',
+                  fontSize: '14px',
+                  fontFamily: 'Inter, sans-serif',
+                  outline: 'none'
+                }}
+              />
+              {passwordError && (
+                <div style={{
+                  color: '#ef4444',
+                  fontSize: '11px',
+                  marginTop: '8px'
+                }}>
+                  {passwordError}
+                </div>
+              )}
+            </div>
+            
+            <button
+              type="submit"
+              style={{
+                width: '100%',
+                padding: '12px',
+                background: 'linear-gradient(135deg, #D4AF37 0%, #F5A623 100%)',
+                color: '#0f1419',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                fontFamily: 'Inter, sans-serif',
+                letterSpacing: '0.05em'
+              }}
+            >
+              ACCESS DASHBOARD
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
