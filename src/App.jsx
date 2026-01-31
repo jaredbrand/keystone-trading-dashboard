@@ -198,8 +198,8 @@ export default function LiveTradingDashboard() {
   const uniqueDates = [...new Set(filteredBets.map(bet => bet.date).filter(d => d))];
   const tradesPerDay = uniqueDates.length > 0 ? filteredBets.length / uniqueDates.length : 0;
 
-  // Open positions (no outcome yet)
-  const openPositions = filteredBets.filter(bet => !bet.outcome || (bet.outcome !== 'Win' && bet.outcome !== 'Loss'));
+  // Open positions (only where outcome is specifically "Open")
+  const openPositions = filteredBets.filter(bet => bet.outcome === 'Open');
 
   // Recent trades (last 10 settled)
   const recentTrades = filteredBets
