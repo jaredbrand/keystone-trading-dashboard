@@ -213,6 +213,16 @@ export default function LiveTradingDashboard() {
       });
     }
     
+    if (dateRange === 'yesterday') {
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      return data.filter(item => {
+        const itemDate = new Date(item[dateField]);
+        const itemDateOnly = new Date(itemDate.getFullYear(), itemDate.getMonth(), itemDate.getDate());
+        return itemDateOnly.getTime() === yesterday.getTime();
+      });
+    }
+    
     const days = dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 0;
     if (days === 0) return data;
     
@@ -571,6 +581,7 @@ export default function LiveTradingDashboard() {
             { value: 'all', label: 'All Time' },
             { value: '30d', label: '30 Days' },
             { value: '7d', label: '7 Days' },
+            { value: 'yesterday', label: 'Yesterday' },
             { value: 'today', label: 'Today' }
           ].map(range => (
             <button
