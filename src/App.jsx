@@ -151,14 +151,14 @@ export default function LiveTradingDashboard() {
         mtdWinRate: parseFloat(summaryRows[1]?.[1]?.replace(/[()%]/g, '')) || 0,
         mtdTotalBets: parseInt(summaryRows[1]?.[3]) || 0,
         mtdNotional: parseFloat(summaryRows[1]?.[4]?.replace(/[$,]/g, '')) || 0,
-        avgEdge: parseFloat(summaryRows[1]?.[5]?.replace('%', '')) || 0,
+        avgEdge: parseFloat(summaryRows[1]?.[5]?.replace('%', '')) || 0, // E2 - Average Edge (will be renamed to Average Alpha)
         avgHold: parseFloat(summaryRows[1]?.[6]?.replace('%', '')) || 0,
         roi: parseFloat(summaryRows[1]?.[7]?.replace('%', '')) || 0,
-        bankroll: parseFloat(summaryRows[1]?.[8]?.replace(/[$,]/g, '')) || 0,
-        duration: parseInt(summaryRows[1]?.[9]) || 0,
-        wlWeeks: summaryRows[1]?.[10] || '',
+        bankroll: parseFloat(summaryRows[1]?.[7]?.replace(/[$,]/g, '')) || 0, // H2 - Bankroll
+        duration: parseInt(summaryRows[1]?.[8]) || 0, // I2 - Duration
+        wlWeeks: summaryRows[1]?.[9] || '', // J2 - W/L Weeks
         avgTradesPerDay: parseFloat(summaryRows[9]?.[0]) || 0,
-        avgTime: summaryRows[9]?.[1] || '',
+        avgTime: summaryRows[9]?.[1] || '', // B10 - Average Trade Time
         avgOdds: parseFloat(summaryRows[9]?.[2]) || 0,
         avgModelOdds: parseFloat(summaryRows[9]?.[3]) || 0,
         avgBetSize: parseFloat(summaryRows[9]?.[4]?.replace('%', '')) || 0,
@@ -969,11 +969,14 @@ export default function LiveTradingDashboard() {
             <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
               <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500' }}>W/L WEEKS</div>
               <div style={{ fontSize: '28px', fontWeight: '800', color: '#e8e6e3', fontFamily: 'Inter, sans-serif' }}>{summaryData.wlWeeks}</div>
-              <div style={{ fontSize: '11px', color: '#64748b', marginTop: '8px', fontFamily: 'JetBrains Mono, monospace' }}>AVG TIME: {summaryData.avgTime}</div>
             </div>
             <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
-              <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500' }}>MTD NOTIONAL</div>
-              <div style={{ fontSize: '28px', fontWeight: '800', color: '#e8e6e3', fontFamily: 'Inter, sans-serif' }}>${(summaryData.mtdNotional/1000000).toFixed(2)}M</div>
+              <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500' }}>AVERAGE TRADE TIME</div>
+              <div style={{ fontSize: '28px', fontWeight: '800', color: '#e8e6e3', fontFamily: 'Inter, sans-serif' }}>{summaryData.avgTime}</div>
+            </div>
+            <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
+              <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500' }}>AVERAGE ALPHA</div>
+              <div style={{ fontSize: '28px', fontWeight: '800', color: '#D4AF37', fontFamily: 'Inter, sans-serif' }}>{summaryData.avgEdge.toFixed(2)}%</div>
               <div style={{ fontSize: '11px', color: '#64748b', marginTop: '8px', fontFamily: 'JetBrains Mono, monospace' }}>AVG BET: {summaryData.avgBetSize}%</div>
             </div>
           </div>
