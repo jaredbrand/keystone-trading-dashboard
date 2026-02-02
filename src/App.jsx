@@ -977,7 +977,6 @@ export default function LiveTradingDashboard() {
             <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
               <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500' }}>AVERAGE ALPHA</div>
               <div style={{ fontSize: '28px', fontWeight: '800', color: '#D4AF37', fontFamily: 'Inter, sans-serif' }}>{summaryData.avgEdge.toFixed(2)}%</div>
-              <div style={{ fontSize: '11px', color: '#64748b', marginTop: '8px', fontFamily: 'JetBrains Mono, monospace' }}>AVG BET: {summaryData.avgBetSize}%</div>
             </div>
           </div>
         )}
