@@ -151,12 +151,12 @@ export default function LiveTradingDashboard() {
         mtdWinRate: parseFloat(summaryRows[1]?.[1]?.replace(/[()%]/g, '')) || 0,
         mtdTotalBets: parseInt(summaryRows[1]?.[3]) || 0,
         mtdNotional: parseFloat(summaryRows[1]?.[4]?.replace(/[$,]/g, '')) || 0,
-        avgEdge: parseFloat(summaryRows[1]?.[5]?.replace('%', '')) || 0, // E2 - Average Edge (will be renamed to Average Alpha)
-        avgHold: parseFloat(summaryRows[1]?.[6]?.replace('%', '')) || 0,
-        roi: parseFloat(summaryRows[1]?.[7]?.replace('%', '')) || 0,
-        bankroll: parseFloat(summaryRows[1]?.[7]?.replace(/[$,]/g, '')) || 0, // H2 - Bankroll
-        duration: parseInt(summaryRows[1]?.[8]) || 0, // I2 - Duration
-        wlWeeks: summaryRows[1]?.[9] || '', // J2 - W/L Weeks
+        avgEdge: parseFloat(summaryRows[1]?.[4]?.replace('%', '')) || 0, // E2 - Average Edge (index 4, column E)
+        avgHold: parseFloat(summaryRows[1]?.[5]?.replace('%', '')) || 0, // F2 - Hold (index 5, column F)
+        roi: parseFloat(summaryRows[1]?.[6]?.replace('%', '')) || 0, // G2 - ROI (index 6, column G)
+        bankroll: parseFloat(summaryRows[1]?.[7]?.replace(/[$,]/g, '')) || 0, // H2 - Bankroll (index 7, column H)
+        duration: parseInt(summaryRows[1]?.[8]) || 0, // I2 - Duration (index 8, column I)
+        wlWeeks: summaryRows[1]?.[9] || '', // J2 - W/L Weeks (index 9, column J)
         avgTradesPerDay: parseFloat(summaryRows[9]?.[0]) || 0,
         avgTime: summaryRows[9]?.[1] || '', // B10 - Average Trade Time
         avgOdds: parseFloat(summaryRows[9]?.[2]) || 0,
