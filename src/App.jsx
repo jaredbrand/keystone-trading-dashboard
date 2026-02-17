@@ -79,6 +79,15 @@ export default function LiveTradingDashboard() {
       const dailyJson = await dailyResponse.json();
       const summaryJson = await summaryResponse.json();
 
+      // DEBUG - log the raw API response for DailyPNL
+      console.log('=== DAILY PNL RAW RESPONSE ===');
+      console.log('Status:', dailyResponse.status);
+      console.log('Total rows returned:', (dailyJson.values || []).length);
+      console.log('Headers (row 1):', (dailyJson.values || [])[0]);
+      console.log('First data row (row 2):', (dailyJson.values || [])[1]);
+      console.log('Second data row (row 3):', (dailyJson.values || [])[2]);
+      console.log('==============================');
+
       // Process Bets Data
       const betsRows = betsJson.values || [];
       const betsHeaders = betsRows[0] || [];
@@ -134,17 +143,16 @@ export default function LiveTradingDashboard() {
       
       const processedDaily = dailyRows.slice(1).map(row => {
         const day = {};
+        // TRIM headers - sheet has spaces around names e.g. " Total Risk "
         dailyHeaders.forEach((header, idx) => {
-          day[header] = row[idx] || '';
+          day[header.trim()] = row[idx] || '';
         });
 
-        // Robust parser: handles $1,234  (1,234)  -$1,234  $-1,234  plain numbers
+        // Robust parser: handles '$ 16,330'  '$ (1,487)'  '$4,068'  plain numbers
         const parseNum = (str) => {
           if (!str && str !== 0) return 0;
           let s = String(str).trim();
-          // Remove $ and spaces and commas
-          s = s.replace(/[$\s,]/g, '');
-          // Handle parentheses negative: (1234) -> -1234
+          s = s.replace(/[$,\s]/g, '');
           if (s.startsWith('(') && s.endsWith(')')) {
             s = '-' + s.slice(1, -1);
           }
