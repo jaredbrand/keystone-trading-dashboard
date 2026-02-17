@@ -315,9 +315,14 @@ export default function LiveTradingDashboard() {
     return runningSum;
   });
   
+  // Guard against empty data
+  if (cumPNLArr.length === 0) {
+    console.log('No daily data available yet');
+  }
+  
   console.log('cumPNL sample (first 5):', cumPNLArr.slice(0, 5));
-  console.log('cumPNL peak:', Math.max(...cumPNLArr));
-  console.log('cumPNL latest:', cumPNLArr[cumPNLArr.length - 1]);
+  console.log('cumPNL peak:', cumPNLArr.length > 0 ? Math.max(...cumPNLArr) : 'N/A');
+  console.log('cumPNL latest:', cumPNLArr.length > 0 ? cumPNLArr[cumPNLArr.length - 1] : 'N/A');
   
   // Find the true maximum drawdown across ALL peaks
   // For each point, track running peak and calculate drawdown from that peak
@@ -326,32 +331,34 @@ export default function LiveTradingDashboard() {
   let peakAtMaxDD = runningPeak;
   let troughAtMaxDD = runningPeak;
   
-  cumPNLArr.forEach((val, i) => {
-    // Update running peak
-    if (val > runningPeak) runningPeak = val;
-    
-    // Calculate drawdown from current running peak
-    if (runningPeak > 0) {
-      const dd = ((val - runningPeak) / runningPeak) * 100;
-      if (dd < maxDrawdownPct) {
-        maxDrawdownPct = dd;
-        peakAtMaxDD = runningPeak;
-        troughAtMaxDD = val;
+  if (cumPNLArr.length > 0) {
+    cumPNLArr.forEach((val, i) => {
+      // Update running peak
+      if (val > runningPeak) runningPeak = val;
+      
+      // Calculate drawdown from current running peak
+      if (runningPeak > 0) {
+        const dd = ((val - runningPeak) / runningPeak) * 100;
+        if (dd < maxDrawdownPct) {
+          maxDrawdownPct = dd;
+          peakAtMaxDD = runningPeak;
+          troughAtMaxDD = val;
+        }
       }
-    }
-  });
+    });
+  }
   
-  const maxDrawdown = Math.min(100, Math.abs(maxDrawdownPct));
+  const maxDrawdown = cumPNLArr.length > 0 ? Math.min(100, Math.abs(maxDrawdownPct)) : 0;
   
   // Find all-time peak for current drawdown calculation
-  const allTimePeak = Math.max(...cumPNLArr);
+  const allTimePeak = cumPNLArr.length > 0 ? Math.max(...cumPNLArr) : 0;
   
   console.log('=== MAX DRAWDOWN DEBUG ===');
-  console.log('Peak at max DD: $' + peakAtMaxDD.toFixed(0));
-  console.log('Trough at max DD: $' + troughAtMaxDD.toFixed(0));
+  console.log('Peak at max DD: $' + (peakAtMaxDD || 0).toFixed(0));
+  console.log('Trough at max DD: $' + (troughAtMaxDD || 0).toFixed(0));
   console.log('Max DD %:', maxDrawdown.toFixed(2));
   console.log('All-time peak: $' + allTimePeak.toFixed(0));
-  console.log('Current value: $' + cumPNLArr[cumPNLArr.length - 1].toFixed(0));
+  console.log('Current value: $' + (cumPNLArr.length > 0 ? cumPNLArr[cumPNLArr.length - 1].toFixed(0) : '0'));
   console.log('=========================');
 
   // Current value vs all-time peak for current drawdown
