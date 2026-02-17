@@ -288,34 +288,33 @@ export default function LiveTradingDashboard() {
   // ============================================================
 
   // 1. MAX DRAWDOWN
-  // Build cumulative PNL series from daily data, track peak and drawdown
-  // Use the cumPNL field directly from the sheet (already cumulative)
-  const cumPNLSeries = filteredDaily
-    .filter(d => d.cumPNL !== 0 || d.totalPNL !== 0)
-    .map((d, i) => {
-      // Use sheet's cumulative PNL if available, otherwise build it
-      return d.cumPNL !== 0 ? d.cumPNL : filteredDaily.slice(0, i + 1).reduce((s, x) => s + x.totalPNL, 0);
-    });
-
-  let ddPeak = -Infinity;
+  // Use cumPNL directly from sheet (already cumulative, most accurate)
+  // Find the actual peak and trough from cumulative PNL values
+  const cumPNLValues = filteredDaily.map(d => d.cumPNL).filter(v => v !== 0);
+  
+  let ddPeak = 0;
   let maxDrawdownAbs = 0;
   let drawdownSeries = [];
-  cumPNLSeries.forEach((val, i) => {
+
+  filteredDaily.forEach((day, i) => {
+    const val = day.cumPNL;
     if (val > ddPeak) ddPeak = val;
-    // Only calculate drawdown when we have a positive peak to compare against
-    const dd = ddPeak > 0 ? ((val - ddPeak) / ddPeak) * 100 : 0;
+    // Drawdown as % of peak - only when we have a meaningful peak
+    const dd = ddPeak > 1000 ? ((val - ddPeak) / ddPeak) * 100 : 0;
     drawdownSeries.push({ 
-      date: filteredDaily[i]?.date || '', 
+      date: day.date || '', 
       drawdown: parseFloat(Math.min(0, dd).toFixed(2)), 
       cumPNL: val 
     });
     if (dd < maxDrawdownAbs) maxDrawdownAbs = dd;
   });
+
   const maxDrawdown = Math.abs(maxDrawdownAbs);
 
-  // Current drawdown from peak
-  const latestCum = cumPNLSeries[cumPNLSeries.length - 1] || 0;
-  const currentDrawdownPct = ddPeak > 0 ? Math.max(0, ((ddPeak - latestCum) / ddPeak) * 100) : 0;
+  // Current drawdown from all-time peak
+  const latestCum = filteredDaily[filteredDaily.length - 1]?.cumPNL || 0;
+  const allTimePeak = Math.max(...cumPNLValues, 0);
+  const currentDrawdownPct = allTimePeak > 0 ? Math.max(0, ((allTimePeak - latestCum) / allTimePeak) * 100) : 0;
 
   // 2. SHARPE RATIO
   // Using daily returns as % of daily traded amount
@@ -331,13 +330,22 @@ export default function LiveTradingDashboard() {
   const sharpeRatio = stdDev > 0 ? (avgDailyReturn / stdDev) * Math.sqrt(252) : 0;
 
   // 3. VALUE AT RISK (VaR) - Historical simulation
-  // Sort daily returns and take the 5th percentile (95% VaR)
-  const sortedReturns = [...dailyReturns].sort((a, b) => a - b);
-  // Use max(1, floor) to avoid hitting index 0 when we have enough data
-  const var95Index = Math.max(0, Math.ceil(sortedReturns.length * 0.05) - 1);
-  const var99Index = Math.max(0, Math.ceil(sortedReturns.length * 0.01) - 1);
-  const var95 = sortedReturns.length > 5 ? Math.abs(Math.min(0, sortedReturns[var95Index])) : 0;
-  const var99 = sortedReturns.length > 10 ? Math.abs(Math.min(0, sortedReturns[var99Index])) : 0;
+  // Only use days where we had actual losses for VaR calculation
+  const losingReturns = dailyReturns.filter(r => r < 0).sort((a, b) => a - b);
+  const allSortedReturns = [...dailyReturns].sort((a, b) => a - b);
+  
+  // 95% VaR: worst 5% of all days
+  const var95Index = Math.max(0, Math.floor(allSortedReturns.length * 0.05));
+  // 99% VaR: worst 1% of all days  
+  const var99Index = Math.max(0, Math.floor(allSortedReturns.length * 0.01));
+  
+  const var95 = allSortedReturns.length > 5 
+    ? Math.abs(Math.min(0, allSortedReturns[var95Index])) : 0;
+  const var99 = allSortedReturns.length > 10 
+    ? Math.abs(Math.min(0, allSortedReturns[var99Index])) : 0;
+
+  // Return distribution for histogram
+  const sortedReturns = allSortedReturns;
 
   // Return distribution for histogram
   const returnBuckets = Array.from({ length: 10 }, (_, i) => {
