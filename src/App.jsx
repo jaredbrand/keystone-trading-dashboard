@@ -127,20 +127,29 @@ export default function LiveTradingDashboard() {
       // Process Daily PNL Data
       const dailyRows = dailyJson.values || [];
       const dailyHeaders = dailyRows[0] || [];
+      
+      // DEBUG - log headers and first row to console
+      console.log('DailyPNL Headers:', dailyHeaders);
+      console.log('DailyPNL First Row:', dailyRows[1]);
+      
       const processedDaily = dailyRows.slice(1).map(row => {
         const day = {};
         dailyHeaders.forEach((header, idx) => {
           day[header] = row[idx] || '';
         });
 
-        // Helper to parse currency/number values including negative parentheses format
+        // Robust parser: handles $1,234  (1,234)  -$1,234  $-1,234  plain numbers
         const parseNum = (str) => {
-          if (!str) return 0;
-          let cleaned = String(str).replace(/[$,\s]/g, '');
-          if (cleaned.startsWith('(') && cleaned.endsWith(')')) {
-            cleaned = '-' + cleaned.slice(1, -1);
+          if (!str && str !== 0) return 0;
+          let s = String(str).trim();
+          // Remove $ and spaces and commas
+          s = s.replace(/[$\s,]/g, '');
+          // Handle parentheses negative: (1234) -> -1234
+          if (s.startsWith('(') && s.endsWith(')')) {
+            s = '-' + s.slice(1, -1);
           }
-          return parseFloat(cleaned) || 0;
+          const val = parseFloat(s);
+          return isNaN(val) ? 0 : val;
         };
 
         return {
@@ -149,9 +158,9 @@ export default function LiveTradingDashboard() {
           totalRisk: parseNum(day['Total Risk']),
           totalPNL: parseNum(day['Total PNL']),
           cumPNL: parseNum(day['Cumulative PNL']),
-          avgEdge: parseFloat((day['Average Edge'] || '').replace('%', '')) || 0,
-          roi: parseFloat((day['ROI (%)'] || '').replace('%', '')) || 0,
-          winRate: parseFloat((day['Win Rate'] || '').replace('%', '')) || 0
+          avgEdge: parseFloat((day['Average Edge'] || '').replace(/[%$,\s]/g, '')) || 0,
+          roi: parseFloat((day['ROI (%)'] || '').replace(/[%$,\s]/g, '')) || 0,
+          winRate: parseFloat((day['Win Rate'] || '').replace(/[%$,\s]/g, '')) || 0
         };
       }).filter(day => day.date && day.date !== ''); // Filter out empty rows
 
