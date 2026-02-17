@@ -443,11 +443,11 @@ export default function LiveTradingDashboard() {
     ? riskDaily.reduce((sum, d) => sum + d.totalRisk, 0) / filteredDaily.length : 0;
   const actualBetPct = avgDailyRisk > 0 ? (avgBetAmount / avgDailyRisk) * 100 : 0;
 
-  // Risk rating (composite score)
+  // Risk rating (composite score based on current position)
   const riskScore = Math.min(100, Math.max(0,
-    (maxDrawdown > 20 ? 40 : maxDrawdown * 2) +
-    (sharpeRatio < 0 ? 30 : sharpeRatio < 1 ? 15 : 0) +
-    (currentDrawdownPct > 10 ? 30 : currentDrawdownPct * 3)
+    (currentDrawdownPct > 15 ? 50 : currentDrawdownPct * 3) +
+    (sharpeRatio < 0 ? 30 : sharpeRatio < 1 ? 20 : 0) +
+    (var95 > 50 ? 30 : var95 > 30 ? 15 : 0)
   ));
   const riskLevel = riskScore < 25 ? { label: 'LOW', color: '#10b981' }
     : riskScore < 50 ? { label: 'MODERATE', color: '#F5A623' }
@@ -1261,24 +1261,24 @@ export default function LiveTradingDashboard() {
             {/* 4 Key Risk Metrics */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '24px' }}>
               
-              {/* Max Drawdown Card */}
+              {/* Current Drawdown Card */}
               <div className="card" style={{ borderRadius: '16px', padding: '28px', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
                   <div>
-                    <div style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em', marginBottom: '4px' }}>MAX DRAWDOWN</div>
+                    <div style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em', marginBottom: '4px' }}>CURRENT DRAWDOWN</div>
                     <div style={{ fontSize: '36px', fontWeight: '900', color: '#ef4444', fontFamily: 'Inter, sans-serif' }}>
-                      -{maxDrawdown.toFixed(2)}%
+                      -{currentDrawdownPct.toFixed(2)}%
                     </div>
                   </div>
                   <div style={{ padding: '8px 12px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                    <div style={{ fontSize: '10px', color: '#ef4444', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>PEAK TO TROUGH</div>
+                    <div style={{ fontSize: '10px', color: '#ef4444', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>FROM ATH</div>
                   </div>
                 </div>
                 <div style={{ borderTop: '1px solid rgba(148, 163, 184, 0.1)', paddingTop: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>Current Drawdown</span>
-                    <span style={{ fontSize: '11px', color: currentDrawdownPct > 5 ? '#ef4444' : '#10b981', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>
-                      -{currentDrawdownPct.toFixed(2)}%
+                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>All-Time High</span>
+                    <span style={{ fontSize: '11px', color: '#10b981', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>
+                      ${allTimePeak.toLocaleString(undefined, {maximumFractionDigits: 0})}
                     </span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -1450,7 +1450,7 @@ export default function LiveTradingDashboard() {
                 {[
                   { label: 'Win Rate', value: `${winRate.toFixed(1)}%`, status: winRate >= 55 ? 'good' : winRate >= 50 ? 'ok' : 'warn' },
                   { label: 'Sharpe Ratio', value: sharpeRatio.toFixed(2), status: sharpeRatio >= 2 ? 'good' : sharpeRatio >= 1 ? 'ok' : 'warn' },
-                  { label: 'Max Drawdown', value: `-${maxDrawdown.toFixed(2)}%`, status: maxDrawdown < 10 ? 'good' : maxDrawdown < 20 ? 'ok' : 'warn' },
+                  { label: 'Current Drawdown', value: `-${currentDrawdownPct.toFixed(2)}%`, status: currentDrawdownPct < 5 ? 'good' : currentDrawdownPct < 10 ? 'ok' : 'warn' },
                   { label: 'Current Drawdown', value: `-${currentDrawdownPct.toFixed(2)}%`, status: currentDrawdownPct < 5 ? 'good' : currentDrawdownPct < 15 ? 'ok' : 'warn' },
                   { label: '95% VaR (1-day)', value: `-${var95.toFixed(2)}%`, status: var95 < 5 ? 'good' : var95 < 10 ? 'ok' : 'warn' },
                   { label: '99% VaR (1-day)', value: `-${var99.toFixed(2)}%`, status: var99 < 10 ? 'good' : var99 < 20 ? 'ok' : 'warn' },
