@@ -1537,31 +1537,40 @@ export default function LiveTradingDashboard() {
               <div className="card" style={{ borderRadius: '16px', padding: '28px', borderColor: 'rgba(16, 185, 129, 0.2)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
                   <div>
-                    <div style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em', marginBottom: '4px' }}>KELLY CRITERION</div>
+                    <div style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em', marginBottom: '4px' }}>KELLY STRATEGY</div>
                     <div style={{ fontSize: '36px', fontWeight: '900', color: '#10b981', fontFamily: 'Inter, sans-serif' }}>
-                      {kellyCriterion.toFixed(2)}%
+                      0.3 Kelly
                     </div>
                   </div>
                   <div style={{ padding: '8px 12px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-                    <div style={{ fontSize: '10px', color: '#10b981', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>FULL KELLY</div>
+                    <div style={{ fontSize: '10px', color: '#10b981', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>YOUR MULTIPLIER</div>
                   </div>
                 </div>
                 <div style={{ borderTop: '1px solid rgba(148, 163, 184, 0.1)', paddingTop: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>0.3 Kelly (Your Strategy)</span>
-                    <span style={{ fontSize: '11px', color: '#10b981', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>{thirdKelly.toFixed(2)}%</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>Half Kelly</span>
-                    <span style={{ fontSize: '11px', color: '#10b981', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>{halfKelly.toFixed(2)}%</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: thirdKelly > 3 ? '12px' : '0' }}>
-                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>Avg Bet Size</span>
-                    <span style={{ fontSize: '11px', color: '#10b981', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>
-                      ${avgBetAmount.toLocaleString(undefined, {maximumFractionDigits: 0})} ({(avgBetAmount / 100000 * 100).toFixed(1)}%)
+                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>Avg Edge (Alpha)</span>
+                    <span style={{ fontSize: '11px', color: '#D4AF37', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>
+                      {summaryData?.avgEdge?.toFixed(1) || '0.0'}%
                     </span>
                   </div>
-                  {thirdKelly > 3 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>Avg Bet Size</span>
+                    <span style={{ fontSize: '11px', color: '#10b981', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>
+                      ${avgBetAmount.toLocaleString(undefined, {maximumFractionDigits: 0})}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: (avgBetAmount / 100000 * 100) > 3 ? '12px' : '0' }}>
+                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>% of Bankroll</span>
+                    <span style={{ 
+                      fontSize: '11px', 
+                      color: (avgBetAmount / 100000 * 100) > 5 ? '#ef4444' : (avgBetAmount / 100000 * 100) > 3 ? '#F5A623' : '#10b981',
+                      fontFamily: 'JetBrains Mono, monospace', 
+                      fontWeight: '600' 
+                    }}>
+                      {(avgBetAmount / 100000 * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  {(avgBetAmount / 100000 * 100) > 3 && (
                     <div style={{ 
                       marginTop: '12px', 
                       padding: '10px', 
@@ -1570,10 +1579,10 @@ export default function LiveTradingDashboard() {
                       border: '1px solid rgba(245, 166, 35, 0.2)'
                     }}>
                       <div style={{ fontSize: '10px', color: '#F5A623', fontFamily: 'Inter, sans-serif', fontWeight: '600', marginBottom: '4px' }}>
-                        ⚠ RISK CONCENTRATION
+                        ⚠ HIGH CONCENTRATION RISK
                       </div>
                       <div style={{ fontSize: '10px', color: '#94a3b8', fontFamily: 'JetBrains Mono, monospace', lineHeight: '1.4' }}>
-                        Large edges producing {thirdKelly.toFixed(1)}% bets. Consider reducing Kelly fraction to 0.2 or 0.15 to limit exposure on high-alpha opportunities.
+                        Large edges producing {(avgBetAmount / 100000 * 100).toFixed(1)}% bets. Consider reducing to 0.2 Kelly (target ~2.5%) or 0.15 Kelly (target ~2%) to limit single-bet exposure.
                       </div>
                     </div>
                   )}
