@@ -264,6 +264,10 @@ export default function LiveTradingDashboard() {
 
   const filteredBets = getFilteredData(betsData);
   const filteredDaily = getFilteredData(dailyPNLData);
+  
+  // For risk calculations, always use ALL daily data regardless of date filter
+  // Risk metrics are portfolio-level and should always reflect full history
+  const riskDaily = dailyPNLData;
 
   // Calculate metrics dynamically from filtered bets data (so date filters work)
   const totalPNL = filteredBets.reduce((sum, bet) => sum + bet.pnl, 0);
@@ -289,7 +293,7 @@ export default function LiveTradingDashboard() {
 
   // 1. MAX DRAWDOWN
   // Simple: highest cumPNL value = peak, lowest cumPNL AFTER that peak = trough
-  const cumPNLArr = filteredDaily.map(d => d.cumPNL);
+  const cumPNLArr = riskDaily.map(d => d.cumPNL);
   console.log('cumPNL sample (first 5):', cumPNLArr.slice(0, 5));
   console.log('cumPNL peak:', Math.max(...cumPNLArr));
   console.log('cumPNL latest:', cumPNLArr[cumPNLArr.length - 1]);
@@ -311,7 +315,7 @@ export default function LiveTradingDashboard() {
 
   // Build drawdown series for chart
   let ddPeak = 0;
-  let drawdownSeries = filteredDaily.map((day, i) => {
+  let drawdownSeries = riskDaily.map((day, i) => {
     if (day.cumPNL > ddPeak) ddPeak = day.cumPNL;
     const dd = ddPeak > 0 ? ((day.cumPNL - ddPeak) / ddPeak) * 100 : 0;
     return { date: day.date || '', drawdown: parseFloat(Math.min(0, dd).toFixed(2)), cumPNL: day.cumPNL };
@@ -319,14 +323,14 @@ export default function LiveTradingDashboard() {
 
   // 2. SHARPE RATIO
   // Using daily returns as % of daily traded amount - only exclude zero-risk days
-  const dailyReturns = filteredDaily
+  const dailyReturns = riskDaily
     .filter(d => d.totalRisk > 0)
     .map(d => (d.totalPNL / d.totalRisk) * 100);
 
   // DEBUG - log first 5 daily values to check parsing
   console.log('=== DAILY DATA CHECK ===');
-  console.log('First 5 days totalPNL:', filteredDaily.slice(0, 5).map(d => ({date: d.date, pnl: d.totalPNL, risk: d.totalRisk})));
-  console.log('Built cumPNL peak:', Math.max(...(filteredDaily.reduce((acc, d) => { const prev = acc.length > 0 ? acc[acc.length-1] : 0; acc.push(prev + d.totalPNL); return acc; }, []))));
+  console.log('First 5 days totalPNL:', riskDaily.slice(0, 5).map(d => ({date: d.date, pnl: d.totalPNL, risk: d.totalRisk})));
+  console.log('Built cumPNL peak:', Math.max(...(riskDaily.reduce((acc, d) => { const prev = acc.length > 0 ? acc[acc.length-1] : 0; acc.push(prev + d.totalPNL); return acc; }, []))));
   console.log('========================');
   const avgDailyReturn = dailyReturns.length > 0
     ? dailyReturns.reduce((a, b) => a + b, 0) / dailyReturns.length : 0;
@@ -382,8 +386,8 @@ export default function LiveTradingDashboard() {
     ? filteredBets.reduce((sum, bet) => sum + bet.betAmount, 0) / filteredBets.length : 0;
   const totalAvgTraded = totalTraded > 0 ? totalTraded / filteredBets.length : 0;
   // Express actual avg bet as % of total bankroll proxy (avg daily risk)
-  const avgDailyRisk = filteredDaily.length > 0
-    ? filteredDaily.reduce((sum, d) => sum + d.totalRisk, 0) / filteredDaily.length : 0;
+  const avgDailyRisk = riskDaily.length > 0
+    ? riskDaily.reduce((sum, d) => sum + d.totalRisk, 0) / filteredDaily.length : 0;
   const actualBetPct = avgDailyRisk > 0 ? (avgBetAmount / avgDailyRisk) * 100 : 0;
 
   // Risk rating (composite score)
@@ -1153,7 +1157,7 @@ export default function LiveTradingDashboard() {
                 </div>
               </div>
               <p style={{ color: '#64748b', fontSize: '12px', fontFamily: 'JetBrains Mono, monospace', margin: 0 }}>
-                All metrics are % based • Calculated from {filteredBets.length} confirmed trades across {filteredDaily.length} trading days
+                All metrics are % based • Calculated from {filteredBets.length} confirmed trades across {riskDaily.length} trading days
               </p>
             </div>
 
