@@ -324,8 +324,7 @@ export default function LiveTradingDashboard() {
   console.log('cumPNL peak:', cumPNLArr.length > 0 ? Math.max(...cumPNLArr) : 'N/A');
   console.log('cumPNL latest:', cumPNLArr.length > 0 ? cumPNLArr[cumPNLArr.length - 1] : 'N/A');
   
-  // Find the true maximum drawdown across ALL peaks
-  // For each point, track running peak and calculate drawdown from that peak
+  // Find the maximum drawdown: for each point, track running peak and calculate drawdown
   let maxDrawdownPct = 0;
   let runningPeak = cumPNLArr[0] || 0;
   let peakAtMaxDD = runningPeak;
@@ -348,7 +347,8 @@ export default function LiveTradingDashboard() {
     });
   }
   
-  const maxDrawdown = cumPNLArr.length > 0 ? Math.min(100, Math.abs(maxDrawdownPct)) : 0;
+  // NO CAP - allow >100% drawdowns (going negative from positive is >100% loss)
+  const maxDrawdown = cumPNLArr.length > 0 ? Math.abs(maxDrawdownPct) : 0;
   
   // Find all-time peak for current drawdown calculation
   const allTimePeak = cumPNLArr.length > 0 ? Math.max(...cumPNLArr) : 0;
