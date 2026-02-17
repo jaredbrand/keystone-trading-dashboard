@@ -288,34 +288,34 @@ export default function LiveTradingDashboard() {
   // ============================================================
 
   // 1. MAX DRAWDOWN
-  // Build cumulative PNL by summing totalPNL (we know this parses correctly - Sharpe uses it)
-  let runningTotal = 0;
-  const builtCumPNL = filteredDaily.map(d => {
-    runningTotal += d.totalPNL;
-    return runningTotal;
-  });
+  // Simple: highest cumPNL value = peak, lowest cumPNL AFTER that peak = trough
+  const cumPNLArr = filteredDaily.map(d => d.cumPNL);
+  console.log('cumPNL sample (first 5):', cumPNLArr.slice(0, 5));
+  console.log('cumPNL peak:', Math.max(...cumPNLArr));
+  console.log('cumPNL latest:', cumPNLArr[cumPNLArr.length - 1]);
+  
+  // Find index of peak (highest cumPNL)
+  const peakIndex = cumPNLArr.reduce((maxIdx, val, idx) => val > cumPNLArr[maxIdx] ? idx : maxIdx, 0);
+  const peakValue = cumPNLArr[peakIndex] || 0;
+  
+  // Find lowest value after the peak
+  const valuesAfterPeak = cumPNLArr.slice(peakIndex);
+  const troughValue = valuesAfterPeak.length > 0 ? Math.min(...valuesAfterPeak) : peakValue;
+  
+  // Max drawdown = (trough - peak) / peak * 100
+  const maxDrawdown = peakValue > 0 ? Math.abs(((troughValue - peakValue) / peakValue) * 100) : 0;
 
+  // Current value vs peak for current drawdown
+  const latestCumValue = cumPNLArr[cumPNLArr.length - 1] || 0;
+  const currentDrawdownPct = peakValue > 0 ? Math.max(0, ((peakValue - latestCumValue) / peakValue) * 100) : 0;
+
+  // Build drawdown series for chart
   let ddPeak = 0;
-  let maxDrawdownAbs = 0;
-  let drawdownSeries = [];
-
-  builtCumPNL.forEach((val, i) => {
-    if (val > ddPeak) ddPeak = val;
-    const dd = ddPeak > 1000 ? ((val - ddPeak) / ddPeak) * 100 : 0;
-    drawdownSeries.push({ 
-      date: filteredDaily[i]?.date || '', 
-      drawdown: parseFloat(Math.min(0, dd).toFixed(2)), 
-      cumPNL: val 
-    });
-    if (dd < maxDrawdownAbs) maxDrawdownAbs = dd;
+  let drawdownSeries = filteredDaily.map((day, i) => {
+    if (day.cumPNL > ddPeak) ddPeak = day.cumPNL;
+    const dd = ddPeak > 0 ? ((day.cumPNL - ddPeak) / ddPeak) * 100 : 0;
+    return { date: day.date || '', drawdown: parseFloat(Math.min(0, dd).toFixed(2)), cumPNL: day.cumPNL };
   });
-
-  const maxDrawdown = Math.abs(maxDrawdownAbs);
-
-  // Current drawdown from all-time peak
-  const latestCum = builtCumPNL[builtCumPNL.length - 1] || 0;
-  const allTimePeak = Math.max(...builtCumPNL, 0);
-  const currentDrawdownPct = allTimePeak > 0 ? Math.max(0, ((allTimePeak - latestCum) / allTimePeak) * 100) : 0;
 
   // 2. SHARPE RATIO
   // Using daily returns as % of daily traded amount - only exclude zero-risk days
