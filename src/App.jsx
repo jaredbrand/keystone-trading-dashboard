@@ -148,14 +148,23 @@ export default function LiveTradingDashboard() {
           day[header.trim()] = row[idx] || '';
         });
 
-        // Robust parser: handles '$ 16,330'  '$ (1,487)'  '$4,068'  plain numbers
+        // Ultra-robust parser: handles '$ 16,330'  '$ (1,487)'  '$ -'  '-$1,234'  '$4,068'  plain numbers
         const parseNum = (str) => {
           if (!str && str !== 0) return 0;
+          if (typeof str === 'number') return str;
           let s = String(str).trim();
+          
+          // Handle '$ -' or just '-' as zero
+          if (s === '$ -' || s === '-' || s === '$-') return 0;
+          
+          // Remove all $, spaces, commas
           s = s.replace(/[$,\s]/g, '');
+          
+          // Handle (1234) format -> -1234
           if (s.startsWith('(') && s.endsWith(')')) {
             s = '-' + s.slice(1, -1);
           }
+          
           const val = parseFloat(s);
           return isNaN(val) ? 0 : val;
         };
@@ -317,19 +326,33 @@ export default function LiveTradingDashboard() {
   // Find the worst drawdown: for each point, look back to find the highest peak before it
   let maxDrawdownPct = 0;
   let runningPeak = cumPNLArr[0] || 0;
+  let worstTrough = runningPeak;
+  let peakAtWorstDD = runningPeak;
   
   cumPNLArr.forEach((val, i) => {
     if (val > runningPeak) runningPeak = val;
     if (runningPeak > 0) {
       const dd = ((val - runningPeak) / runningPeak) * 100;
-      if (dd < maxDrawdownPct) maxDrawdownPct = dd;
+      if (dd < maxDrawdownPct) {
+        maxDrawdownPct = dd;
+        worstTrough = val;
+        peakAtWorstDD = runningPeak;
+      }
     }
   });
   
-  const maxDrawdown = Math.abs(maxDrawdownPct);
+  // Cap at 100% as failsafe (can't lose more than 100%)
+  const maxDrawdown = Math.min(100, Math.abs(maxDrawdownPct));
   
-  console.log('Max DD calc - worst %:', maxDrawdown.toFixed(2));
-  console.log('Max DD calc - running peak used:', runningPeak);
+  console.log('=== MAX DRAWDOWN DEBUG ===');
+  console.log('Peak at worst DD: $' + peakAtWorstDD.toFixed(0));
+  console.log('Trough at worst DD: $' + worstTrough.toFixed(0));
+  console.log('Raw DD %:', maxDrawdownPct.toFixed(2));
+  console.log('Capped DD %:', maxDrawdown.toFixed(2));
+  console.log('Min cumPNL ever: $' + Math.min(...cumPNLArr).toFixed(0));
+  console.log('Max cumPNL ever: $' + Math.max(...cumPNLArr).toFixed(0));
+  console.log('First 10 cumPNL:', cumPNLArr.slice(0, 10).map(v => '$' + v.toFixed(0)));
+  console.log('=========================');
 
   // Current value vs peak for current drawdown
   const latestCumValue = cumPNLArr[cumPNLArr.length - 1] || 0;
@@ -338,9 +361,10 @@ export default function LiveTradingDashboard() {
   // Build drawdown series for chart
   let ddPeak = 0;
   let drawdownSeries = riskDaily.map((day, i) => {
-    if (day.cumPNL > ddPeak) ddPeak = day.cumPNL;
-    const dd = ddPeak > 0 ? ((day.cumPNL - ddPeak) / ddPeak) * 100 : 0;
-    return { date: day.date || '', drawdown: parseFloat(Math.min(0, dd).toFixed(2)), cumPNL: day.cumPNL };
+    const cumVal = cumPNLArr[i] || 0;
+    if (cumVal > ddPeak) ddPeak = cumVal;
+    const dd = ddPeak > 0 ? ((cumVal - ddPeak) / ddPeak) * 100 : 0;
+    return { date: day.date || '', drawdown: parseFloat(Math.min(0, dd).toFixed(2)), cumPNL: cumVal };
   });
 
   // 2. SHARPE RATIO
