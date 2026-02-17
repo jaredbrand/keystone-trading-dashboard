@@ -1555,14 +1555,28 @@ export default function LiveTradingDashboard() {
                     <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>Half Kelly</span>
                     <span style={{ fontSize: '11px', color: '#10b981', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>{halfKelly.toFixed(2)}%</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>Avg Bet Size (Col N)</span>
-                    <span style={{ fontSize: '11px', 
-                      color: actualBetPct <= thirdKelly ? '#10b981' : actualBetPct <= kellyCriterion ? '#F5A623' : '#ef4444',
-                      fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>
-                      ${avgBetAmount.toLocaleString(undefined, {maximumFractionDigits: 0})} {actualBetPct <= thirdKelly ? '✓' : actualBetPct <= kellyCriterion ? '~' : '⚠'}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: thirdKelly > 3 ? '12px' : '0' }}>
+                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>Avg Bet Size</span>
+                    <span style={{ fontSize: '11px', color: '#10b981', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>
+                      ${avgBetAmount.toLocaleString(undefined, {maximumFractionDigits: 0})} ({(avgBetAmount / 100000 * 100).toFixed(1)}%)
                     </span>
                   </div>
+                  {thirdKelly > 3 && (
+                    <div style={{ 
+                      marginTop: '12px', 
+                      padding: '10px', 
+                      background: 'rgba(245, 166, 35, 0.1)', 
+                      borderRadius: '6px',
+                      border: '1px solid rgba(245, 166, 35, 0.2)'
+                    }}>
+                      <div style={{ fontSize: '10px', color: '#F5A623', fontFamily: 'Inter, sans-serif', fontWeight: '600', marginBottom: '4px' }}>
+                        ⚠ RISK CONCENTRATION
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#94a3b8', fontFamily: 'JetBrains Mono, monospace', lineHeight: '1.4' }}>
+                        Large edges producing {thirdKelly.toFixed(1)}% bets. Consider reducing Kelly fraction to 0.2 or 0.15 to limit exposure on high-alpha opportunities.
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
