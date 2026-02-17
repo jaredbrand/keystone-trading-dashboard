@@ -393,22 +393,21 @@ export default function LiveTradingDashboard() {
   // Annualised Sharpe (using ~252 trading days)
   const sharpeRatio = stdDev > 0 ? (avgDailyReturn / stdDev) * Math.sqrt(252) : 0;
 
-  // 3. VALUE AT RISK (VaR) - Historical simulation
-  // Only use days where we had actual losses for VaR calculation
-  const allSortedReturns = [...dailyReturns].sort((a, b) => a - b);
+  // 3. AVERAGE LOSS ON LOSING DAYS
+  // More meaningful than VaR - shows typical bad day, not worst-case outlier
+  const losingDays = dailyReturns.filter(r => r < 0);
+  const avgLossOnLosingDays = losingDays.length > 0
+    ? Math.abs(losingDays.reduce((sum, r) => sum + r, 0) / losingDays.length)
+    : 0;
   
-  // 95% VaR: worst 5% of all days
-  const var95Index = Math.max(0, Math.floor(allSortedReturns.length * 0.05));
-  // 99% VaR: worst 1% of all days  
-  const var99Index = Math.max(0, Math.floor(allSortedReturns.length * 0.01));
-  
-  const var95 = allSortedReturns.length > 5 
-    ? Math.abs(Math.min(0, allSortedReturns[var95Index])) : 0;
-  const var99 = allSortedReturns.length > 10 
-    ? Math.abs(Math.min(0, allSortedReturns[var99Index])) : 0;
+  // Also calculate win day average for context
+  const winningDays = dailyReturns.filter(r => r > 0);
+  const avgWinOnWinningDays = winningDays.length > 0
+    ? winningDays.reduce((sum, r) => sum + r, 0) / winningDays.length
+    : 0;
 
   // Return distribution for histogram
-  const sortedReturns = allSortedReturns;
+  const sortedReturns = [...dailyReturns].sort((a, b) => a - b);
 
   // Return distribution for histogram
   const returnBuckets = Array.from({ length: 10 }, (_, i) => {
@@ -447,7 +446,7 @@ export default function LiveTradingDashboard() {
   const riskScore = Math.min(100, Math.max(0,
     (currentDrawdownPct > 15 ? 50 : currentDrawdownPct * 3) +
     (sharpeRatio < 0 ? 30 : sharpeRatio < 1 ? 20 : 0) +
-    (var95 > 50 ? 30 : var95 > 30 ? 15 : 0)
+    (avgLossOnLosingDays > 40 ? 30 : avgLossOnLosingDays > 25 ? 15 : 0)
   ));
   const riskLevel = riskScore < 25 ? { label: 'LOW', color: '#10b981' }
     : riskScore < 50 ? { label: 'MODERATE', color: '#F5A623' }
@@ -1221,7 +1220,7 @@ export default function LiveTradingDashboard() {
                   Portfolio Risk Score
                 </h3>
                 <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>
-                  Composite of Drawdown, Sharpe & VaR
+                  Composite of Drawdown, Sharpe & Avg Loss
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
@@ -1322,31 +1321,31 @@ export default function LiveTradingDashboard() {
                 </div>
               </div>
 
-              {/* VaR Card */}
+              {/* Average Loss Card */}
               <div className="card" style={{ borderRadius: '16px', padding: '28px', borderColor: 'rgba(249, 115, 22, 0.2)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
                   <div>
-                    <div style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em', marginBottom: '4px' }}>VALUE AT RISK</div>
+                    <div style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em', marginBottom: '4px' }}>AVG LOSS (LOSING DAYS)</div>
                     <div style={{ fontSize: '36px', fontWeight: '900', color: '#f97316', fontFamily: 'Inter, sans-serif' }}>
-                      -{var95.toFixed(2)}%
+                      -{avgLossOnLosingDays.toFixed(2)}%
                     </div>
                   </div>
                   <div style={{ padding: '8px 12px', background: 'rgba(249, 115, 22, 0.1)', borderRadius: '8px', border: '1px solid rgba(249, 115, 22, 0.2)' }}>
-                    <div style={{ fontSize: '10px', color: '#f97316', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>95% CONFIDENCE</div>
+                    <div style={{ fontSize: '10px', color: '#f97316', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>TYPICAL BAD DAY</div>
                   </div>
                 </div>
                 <div style={{ borderTop: '1px solid rgba(148, 163, 184, 0.1)', paddingTop: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>99% VaR (1-day)</span>
-                    <span style={{ fontSize: '11px', color: '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>-{var99.toFixed(2)}%</span>
+                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>Avg Win (Win Days)</span>
+                    <span style={{ fontSize: '11px', color: '#10b981', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>+{avgWinOnWinningDays.toFixed(2)}%</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>Method</span>
-                    <span style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>HISTORICAL SIM</span>
+                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>Losing Days</span>
+                    <span style={{ fontSize: '11px', color: '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>{losingDays.length}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>Sample Days</span>
-                    <span style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>{dailyReturns.length}</span>
+                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>Winning Days</span>
+                    <span style={{ fontSize: '11px', color: '#10b981', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>{winningDays.length}</span>
                   </div>
                 </div>
               </div>
@@ -1452,8 +1451,8 @@ export default function LiveTradingDashboard() {
                   { label: 'Sharpe Ratio', value: sharpeRatio.toFixed(2), status: sharpeRatio >= 2 ? 'good' : sharpeRatio >= 1 ? 'ok' : 'warn' },
                   { label: 'Current Drawdown', value: `-${currentDrawdownPct.toFixed(2)}%`, status: currentDrawdownPct < 5 ? 'good' : currentDrawdownPct < 10 ? 'ok' : 'warn' },
                   { label: 'Current Drawdown', value: `-${currentDrawdownPct.toFixed(2)}%`, status: currentDrawdownPct < 5 ? 'good' : currentDrawdownPct < 15 ? 'ok' : 'warn' },
-                  { label: '95% VaR (1-day)', value: `-${var95.toFixed(2)}%`, status: var95 < 5 ? 'good' : var95 < 10 ? 'ok' : 'warn' },
-                  { label: '99% VaR (1-day)', value: `-${var99.toFixed(2)}%`, status: var99 < 10 ? 'good' : var99 < 20 ? 'ok' : 'warn' },
+                  { label: 'Avg Loss (Losing Days)', value: `-${avgLossOnLosingDays.toFixed(2)}%`, status: avgLossOnLosingDays < 20 ? 'good' : avgLossOnLosingDays < 35 ? 'ok' : 'warn' },
+                  { label: 'Avg Win (Winning Days)', value: `+${avgWinOnWinningDays.toFixed(2)}%`, status: avgWinOnWinningDays > 30 ? 'good' : avgWinOnWinningDays > 15 ? 'ok' : 'warn' },
                   { label: 'Full Kelly', value: `${kellyCriterion.toFixed(2)}%`, status: 'ok' },
                   { label: '0.3 Kelly (Your Strategy)', value: `${thirdKelly.toFixed(2)}%`, status: 'good' },
                   { label: 'Half Kelly', value: `${halfKelly.toFixed(2)}%`, status: 'good' },
