@@ -319,27 +319,39 @@ export default function LiveTradingDashboard() {
   console.log('cumPNL peak:', Math.max(...cumPNLArr));
   console.log('cumPNL latest:', cumPNLArr[cumPNLArr.length - 1]);
   
-  // Find the absolute all-time peak first
+  // Find the true maximum drawdown across ALL peaks
+  // For each point, track running peak and calculate drawdown from that peak
+  let maxDrawdownPct = 0;
+  let runningPeak = cumPNLArr[0] || 0;
+  let peakAtMaxDD = runningPeak;
+  let troughAtMaxDD = runningPeak;
+  
+  cumPNLArr.forEach((val, i) => {
+    // Update running peak
+    if (val > runningPeak) runningPeak = val;
+    
+    // Calculate drawdown from current running peak
+    if (runningPeak > 0) {
+      const dd = ((val - runningPeak) / runningPeak) * 100;
+      if (dd < maxDrawdownPct) {
+        maxDrawdownPct = dd;
+        peakAtMaxDD = runningPeak;
+        troughAtMaxDD = val;
+      }
+    }
+  });
+  
+  const maxDrawdown = Math.min(100, Math.abs(maxDrawdownPct));
+  
+  // Find all-time peak for current drawdown calculation
   const allTimePeak = Math.max(...cumPNLArr);
-  const peakIndex = cumPNLArr.indexOf(allTimePeak);
-  
-  // Find the worst trough AFTER the all-time peak
-  const valuesAfterPeak = cumPNLArr.slice(peakIndex);
-  const worstTroughAfterPeak = Math.min(...valuesAfterPeak);
-  
-  // Calculate the max drawdown from all-time peak
-  const maxDrawdownFromPeak = allTimePeak > 0 
-    ? Math.abs(((worstTroughAfterPeak - allTimePeak) / allTimePeak) * 100)
-    : 0;
-  
-  const maxDrawdown = Math.min(100, maxDrawdownFromPeak);
   
   console.log('=== MAX DRAWDOWN DEBUG ===');
-  console.log('All-time peak: $' + allTimePeak.toFixed(0));
-  console.log('Worst trough after peak: $' + worstTroughAfterPeak.toFixed(0));
+  console.log('Peak at max DD: $' + peakAtMaxDD.toFixed(0));
+  console.log('Trough at max DD: $' + troughAtMaxDD.toFixed(0));
   console.log('Max DD %:', maxDrawdown.toFixed(2));
-  console.log('Min cumPNL ever: $' + Math.min(...cumPNLArr).toFixed(0));
-  console.log('Max cumPNL ever: $' + Math.max(...cumPNLArr).toFixed(0));
+  console.log('All-time peak: $' + allTimePeak.toFixed(0));
+  console.log('Current value: $' + cumPNLArr[cumPNLArr.length - 1].toFixed(0));
   console.log('=========================');
 
   // Current value vs all-time peak for current drawdown
