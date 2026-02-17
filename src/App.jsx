@@ -1539,7 +1539,7 @@ export default function LiveTradingDashboard() {
                   <div>
                     <div style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em', marginBottom: '4px' }}>KELLY STRATEGY</div>
                     <div style={{ fontSize: '36px', fontWeight: '900', color: '#10b981', fontFamily: 'Inter, sans-serif' }}>
-                      0.3 Kelly
+                      0.3
                     </div>
                   </div>
                   <div style={{ padding: '8px 12px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
