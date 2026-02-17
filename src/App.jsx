@@ -767,7 +767,7 @@ export default function LiveTradingDashboard() {
         
         {/* View Toggles */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '32px', flexWrap: 'wrap' }}>
-          {['all', 'bets', 'daily', 'summary', 'risk'].map(view => (
+          {['all', 'bets', 'daily', 'summary', 'log', 'risk'].map(view => (
             <button
               key={view}
               onClick={() => setActiveView(view)}
@@ -789,7 +789,7 @@ export default function LiveTradingDashboard() {
                 letterSpacing: '0.05em'
               }}
             >
-              {view === 'all' ? 'All Views' : view === 'bets' ? 'Trades' : view === 'daily' ? 'Daily P&L' : view === 'risk' ? '⚠ Risk' : view}
+              {view === 'all' ? 'All Views' : view === 'bets' ? 'Trades' : view === 'daily' ? 'Daily P&L' : view === 'log' ? 'Historical Log' : view === 'risk' ? '⚠ Risk' : view}
             </button>
           ))}
         </div>
@@ -996,6 +996,17 @@ export default function LiveTradingDashboard() {
                           fontSize: '11px', 
                           padding: '4px 10px', 
                           borderRadius: '6px', 
+                          background: 'rgba(16, 185, 129, 0.15)',
+                          color: '#10b981',
+                          fontFamily: 'Inter, sans-serif',
+                          fontWeight: '600'
+                        }}>
+                          {trade.sport}
+                        </span>
+                        <span style={{ 
+                          fontSize: '11px', 
+                          padding: '4px 10px', 
+                          borderRadius: '6px', 
                           background: 'rgba(212, 175, 55, 0.15)',
                           color: '#D4AF37',
                           fontFamily: 'Inter, sans-serif',
@@ -1171,6 +1182,17 @@ export default function LiveTradingDashboard() {
                           fontSize: '11px', 
                           padding: '4px 10px', 
                           borderRadius: '6px', 
+                          background: 'rgba(16, 185, 129, 0.1)',
+                          color: '#10b981',
+                          fontFamily: 'Inter, sans-serif',
+                          fontWeight: '500'
+                        }}>
+                          {trade.sport}
+                        </span>
+                        <span style={{ 
+                          fontSize: '11px', 
+                          padding: '4px 10px', 
+                          borderRadius: '6px', 
                           background: 'rgba(212, 175, 55, 0.1)',
                           color: '#D4AF37',
                           fontFamily: 'Inter, sans-serif',
@@ -1245,6 +1267,101 @@ export default function LiveTradingDashboard() {
             <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
               <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500' }}>AVERAGE ALPHA</div>
               <div style={{ fontSize: '28px', fontWeight: '800', color: '#D4AF37', fontFamily: 'Inter, sans-serif' }}>{summaryData.avgEdge.toFixed(2)}%</div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* HISTORICAL LOG VIEW                                        */}
+        {/* ============================================================ */}
+        {activeView === 'log' && (
+          <div className="card" style={{ borderRadius: '16px', padding: '32px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+              <h2 style={{ 
+                fontSize: '20px', 
+                fontWeight: '700', 
+                fontFamily: 'Inter, sans-serif',
+                color: '#D4AF37'
+              }}>
+                Complete Trade History
+              </h2>
+              <div style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>
+                {filteredBets.filter(b => b.outcome === 'Win' || b.outcome === 'Loss').length} Settled Trades
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {filteredBets
+                .filter(bet => bet.outcome === 'Win' || bet.outcome === 'Loss')
+                .reverse()
+                .map((trade, idx) => (
+                <div 
+                  key={idx}
+                  style={{
+                    background: 'linear-gradient(90deg, rgba(26, 31, 46, 0.4) 0%, transparent 100%)',
+                    borderRadius: '12px',
+                    padding: '18px',
+                    border: '1px solid rgba(148, 163, 184, 0.1)',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
+                        <span style={{ color: '#e8e6e3', fontWeight: '600', fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
+                          {trade.fixture}
+                        </span>
+                        <span style={{ 
+                          fontSize: '11px', 
+                          padding: '4px 10px', 
+                          borderRadius: '6px', 
+                          background: 'rgba(16, 185, 129, 0.1)',
+                          color: '#10b981',
+                          fontFamily: 'Inter, sans-serif',
+                          fontWeight: '500'
+                        }}>
+                          {trade.sport}
+                        </span>
+                        <span style={{ 
+                          fontSize: '11px', 
+                          padding: '4px 10px', 
+                          borderRadius: '6px', 
+                          background: 'rgba(212, 175, 55, 0.1)',
+                          color: '#D4AF37',
+                          fontFamily: 'Inter, sans-serif',
+                          fontWeight: '500'
+                        }}>
+                          {trade.market}
+                        </span>
+                        <span style={{ 
+                          fontSize: '11px', 
+                          padding: '4px 10px', 
+                          borderRadius: '6px', 
+                          background: trade.outcome === 'Win' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                          color: trade.outcome === 'Win' ? '#10b981' : '#ef4444',
+                          fontFamily: 'Inter, sans-serif',
+                          fontWeight: '600'
+                        }}>
+                          {trade.outcome === 'Win' ? '✓ WIN' : '✗ LOSS'}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '24px', fontSize: '11px', color: '#94a3b8', fontFamily: 'JetBrains Mono, monospace' }}>
+                        <span>SELECTION: {trade.selection}{trade.handicap ? ` (${trade.handicap > 0 ? '+' : ''}${trade.handicap})` : ''}</span>
+                        <span>ODDS: {trade.odds}</span>
+                        <span>STAKE: ${trade.betAmount.toLocaleString()}</span>
+                        <span>DATE: {trade.date}</span>
+                      </div>
+                    </div>
+                    <div style={{ 
+                      fontFamily: 'JetBrains Mono, monospace', 
+                      fontWeight: '700', 
+                      fontSize: '16px',
+                      color: trade.pnl >= 0 ? '#10b981' : '#ef4444'
+                    }}>
+                      {trade.pnl >= 0 ? '+' : ''}{trade.pnl < 0 ? '-' : ''}${Math.abs(trade.pnl).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
