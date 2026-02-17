@@ -255,6 +255,91 @@ export default function LiveTradingDashboard() {
   // Open positions (only where outcome is specifically "Open")
   const openPositions = filteredBets.filter(bet => bet.outcome === 'Open');
 
+  // ============================================================
+  // RISK MODULE CALCULATIONS (% based, no absolute dollar values)
+  // ============================================================
+
+  // 1. MAX DRAWDOWN
+  // Build cumulative PNL series from daily data, track peak and drawdown
+  const cumulativeSeries = filteredDaily.reduce((acc, day) => {
+    const prev = acc.length > 0 ? acc[acc.length - 1] : 0;
+    acc.push(prev + day.totalPNL);
+    return acc;
+  }, []);
+  
+  let peak = 0;
+  let maxDrawdownAbs = 0;
+  let currentDrawdown = 0;
+  let drawdownSeries = [];
+  cumulativeSeries.forEach((val, i) => {
+    if (val > peak) peak = val;
+    const dd = peak > 0 ? ((val - peak) / peak) * 100 : 0;
+    drawdownSeries.push({ date: filteredDaily[i]?.date || '', drawdown: parseFloat(dd.toFixed(2)), cumPNL: val });
+    if (dd < maxDrawdownAbs) maxDrawdownAbs = dd;
+  });
+  const maxDrawdown = Math.abs(maxDrawdownAbs);
+
+  // Current drawdown from peak
+  const latestCum = cumulativeSeries[cumulativeSeries.length - 1] || 0;
+  const currentDrawdownPct = peak > 0 ? Math.abs(((latestCum - peak) / peak) * 100) : 0;
+
+  // 2. SHARPE RATIO
+  // Using daily returns as % of daily traded amount
+  const dailyReturns = filteredDaily
+    .filter(d => d.totalRisk > 0)
+    .map(d => (d.totalPNL / d.totalRisk) * 100);
+  const avgDailyReturn = dailyReturns.length > 0
+    ? dailyReturns.reduce((a, b) => a + b, 0) / dailyReturns.length : 0;
+  const stdDev = dailyReturns.length > 1
+    ? Math.sqrt(dailyReturns.reduce((sum, r) => sum + Math.pow(r - avgDailyReturn, 2), 0) / (dailyReturns.length - 1))
+    : 0;
+  // Annualised Sharpe (using ~252 trading days)
+  const sharpeRatio = stdDev > 0 ? (avgDailyReturn / stdDev) * Math.sqrt(252) : 0;
+
+  // 3. VALUE AT RISK (VaR) - Historical simulation
+  // Sort daily returns and take the 5th percentile (95% VaR)
+  const sortedReturns = [...dailyReturns].sort((a, b) => a - b);
+  const var95Index = Math.floor(sortedReturns.length * 0.05);
+  const var99Index = Math.floor(sortedReturns.length * 0.01);
+  const var95 = sortedReturns.length > 0 ? Math.abs(sortedReturns[var95Index] || sortedReturns[0]) : 0;
+  const var99 = sortedReturns.length > 0 ? Math.abs(sortedReturns[var99Index] || sortedReturns[0]) : 0;
+
+  // Return distribution for histogram
+  const returnBuckets = Array.from({ length: 10 }, (_, i) => {
+    const min = -20 + i * 4;
+    const max = min + 4;
+    return {
+      range: `${min}% to ${max}%`,
+      count: dailyReturns.filter(r => r >= min && r < max).length,
+      min, max
+    };
+  });
+
+  // 4. KELLY CRITERION
+  // f* = (bp - q) / b  where b = avg decimal odds - 1, p = win rate, q = 1 - p
+  const p = winRate / 100; // win probability
+  const q = 1 - p;
+  const avgOddsForKelly = filteredBets.length > 0
+    ? filteredBets.reduce((sum, bet) => sum + bet.odds, 0) / filteredBets.length : 2;
+  const b = avgOddsForKelly - 1; // net odds
+  const kellyCriterion = b > 0 ? ((b * p - q) / b) * 100 : 0;
+  const halfKelly = kellyCriterion / 2;
+  const quarterKelly = kellyCriterion / 4;
+
+  // Actual avg bet size as % (using hold as proxy for edge extraction)
+  const actualBetPct = summaryData?.avgBetSize || 0;
+
+  // Risk rating (composite score)
+  const riskScore = Math.min(100, Math.max(0,
+    (maxDrawdown > 20 ? 40 : maxDrawdown * 2) +
+    (sharpeRatio < 0 ? 30 : sharpeRatio < 1 ? 15 : 0) +
+    (currentDrawdownPct > 10 ? 30 : currentDrawdownPct * 3)
+  ));
+  const riskLevel = riskScore < 25 ? { label: 'LOW', color: '#10b981' }
+    : riskScore < 50 ? { label: 'MODERATE', color: '#F5A623' }
+    : riskScore < 75 ? { label: 'ELEVATED', color: '#f97316' }
+    : { label: 'HIGH', color: '#ef4444' };
+
   // Recent trades (last 10 settled)
   const recentTrades = filteredBets
     .filter(bet => bet.outcome === 'Win' || bet.outcome === 'Loss')
@@ -552,16 +637,20 @@ export default function LiveTradingDashboard() {
         
         {/* View Toggles */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '32px', flexWrap: 'wrap' }}>
-          {['all', 'bets', 'daily', 'summary'].map(view => (
+          {['all', 'bets', 'daily', 'summary', 'risk'].map(view => (
             <button
               key={view}
               onClick={() => setActiveView(view)}
               style={{
                 padding: '12px 24px',
                 borderRadius: '8px',
-                border: activeView === view ? '1px solid #D4AF37' : '1px solid rgba(148, 163, 184, 0.2)',
-                background: activeView === view ? 'linear-gradient(135deg, #D4AF37 0%, #F5A623 100%)' : 'rgba(26, 31, 46, 0.6)',
-                color: activeView === view ? '#0f1419' : '#e8e6e3',
+                border: activeView === view 
+                  ? view === 'risk' ? '1px solid #ef4444' : '1px solid #D4AF37'
+                  : '1px solid rgba(148, 163, 184, 0.2)',
+                background: activeView === view 
+                  ? view === 'risk' ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' : 'linear-gradient(135deg, #D4AF37 0%, #F5A623 100%)'
+                  : 'rgba(26, 31, 46, 0.6)',
+                color: activeView === view ? '#fff' : '#e8e6e3',
                 fontWeight: '600',
                 fontSize: '13px',
                 cursor: 'pointer',
@@ -570,7 +659,7 @@ export default function LiveTradingDashboard() {
                 letterSpacing: '0.05em'
               }}
             >
-              {view === 'all' ? 'All Views' : view === 'daily' ? 'Daily P&L' : view}
+              {view === 'all' ? 'All Views' : view === 'daily' ? 'Daily P&L' : view === 'risk' ? '⚠ Risk' : view}
             </button>
           ))}
         </div>
@@ -977,6 +1066,302 @@ export default function LiveTradingDashboard() {
             <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
               <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500' }}>AVERAGE ALPHA</div>
               <div style={{ fontSize: '28px', fontWeight: '800', color: '#D4AF37', fontFamily: 'Inter, sans-serif' }}>{summaryData.avgEdge.toFixed(2)}%</div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* RISK MODULE VIEW                                              */}
+        {/* ============================================================ */}
+        {activeView === 'risk' && (
+          <div>
+            {/* Risk Header */}
+            <div style={{ marginBottom: '32px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '8px' }}>
+                <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#ef4444', fontFamily: 'Inter, sans-serif', margin: 0 }}>
+                  Risk Management Module
+                </h2>
+                <div style={{
+                  padding: '4px 16px',
+                  borderRadius: '20px',
+                  background: `${riskLevel.color}22`,
+                  border: `1px solid ${riskLevel.color}`,
+                  color: riskLevel.color,
+                  fontSize: '11px',
+                  fontWeight: '700',
+                  letterSpacing: '0.1em',
+                  fontFamily: 'Inter, sans-serif'
+                }}>
+                  {riskLevel.label} RISK
+                </div>
+              </div>
+              <p style={{ color: '#64748b', fontSize: '12px', fontFamily: 'JetBrains Mono, monospace', margin: 0 }}>
+                All metrics are % based • Calculated from {filteredBets.length} confirmed trades across {filteredDaily.length} trading days
+              </p>
+            </div>
+
+            {/* Risk Score Gauge */}
+            <div className="card" style={{ borderRadius: '16px', padding: '32px', marginBottom: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#D4AF37', fontFamily: 'Inter, sans-serif', margin: 0 }}>
+                  Portfolio Risk Score
+                </h3>
+                <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>
+                  Composite of Drawdown, Sharpe & VaR
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif' }}>0 — LOW</span>
+                    <span style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif' }}>100 — HIGH</span>
+                  </div>
+                  <div style={{ height: '12px', background: 'rgba(148, 163, 184, 0.1)', borderRadius: '6px', overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${riskScore}%`,
+                      background: `linear-gradient(90deg, #10b981, #F5A623, #ef4444)`,
+                      borderRadius: '6px',
+                      transition: 'width 1s ease'
+                    }} />
+                  </div>
+                  <div style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
+                    {[25, 50, 75].map(mark => (
+                      <div key={mark} style={{ flex: 1, textAlign: 'center', fontSize: '9px', color: '#475569', fontFamily: 'JetBrains Mono, monospace' }}>
+                        |
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'center', minWidth: '80px' }}>
+                  <div style={{ fontSize: '48px', fontWeight: '900', color: riskLevel.color, fontFamily: 'Inter, sans-serif', lineHeight: 1 }}>
+                    {riskScore.toFixed(0)}
+                  </div>
+                  <div style={{ fontSize: '11px', color: riskLevel.color, fontWeight: '600', fontFamily: 'Inter, sans-serif' }}>
+                    {riskLevel.label}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 4 Key Risk Metrics */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '24px' }}>
+              
+              {/* Max Drawdown Card */}
+              <div className="card" style={{ borderRadius: '16px', padding: '28px', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+                  <div>
+                    <div style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em', marginBottom: '4px' }}>MAX DRAWDOWN</div>
+                    <div style={{ fontSize: '36px', fontWeight: '900', color: '#ef4444', fontFamily: 'Inter, sans-serif' }}>
+                      -{maxDrawdown.toFixed(2)}%
+                    </div>
+                  </div>
+                  <div style={{ padding: '8px 12px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                    <div style={{ fontSize: '10px', color: '#ef4444', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>PEAK TO TROUGH</div>
+                  </div>
+                </div>
+                <div style={{ borderTop: '1px solid rgba(148, 163, 184, 0.1)', paddingTop: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>Current Drawdown</span>
+                    <span style={{ fontSize: '11px', color: currentDrawdownPct > 5 ? '#ef4444' : '#10b981', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>
+                      -{currentDrawdownPct.toFixed(2)}%
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>Status</span>
+                    <span style={{ fontSize: '11px', color: currentDrawdownPct === 0 ? '#10b981' : '#F5A623', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>
+                      {currentDrawdownPct === 0 ? '✓ AT PEAK' : '↓ IN DRAWDOWN'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sharpe Ratio Card */}
+              <div className="card" style={{ borderRadius: '16px', padding: '28px', borderColor: 'rgba(212, 175, 55, 0.2)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+                  <div>
+                    <div style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em', marginBottom: '4px' }}>SHARPE RATIO</div>
+                    <div style={{ fontSize: '36px', fontWeight: '900', color: sharpeRatio >= 2 ? '#10b981' : sharpeRatio >= 1 ? '#F5A623' : '#ef4444', fontFamily: 'Inter, sans-serif' }}>
+                      {sharpeRatio.toFixed(2)}
+                    </div>
+                  </div>
+                  <div style={{ padding: '8px 12px', background: 'rgba(212, 175, 55, 0.1)', borderRadius: '8px', border: '1px solid rgba(212, 175, 55, 0.2)' }}>
+                    <div style={{ fontSize: '10px', color: '#D4AF37', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>ANNUALISED</div>
+                  </div>
+                </div>
+                <div style={{ borderTop: '1px solid rgba(148, 163, 184, 0.1)', paddingTop: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>Avg Daily Return</span>
+                    <span style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>{avgDailyReturn.toFixed(2)}%</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>Daily Volatility</span>
+                    <span style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>{stdDev.toFixed(2)}%</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>Rating</span>
+                    <span style={{ fontSize: '11px', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600',
+                      color: sharpeRatio >= 2 ? '#10b981' : sharpeRatio >= 1 ? '#F5A623' : '#ef4444' }}>
+                      {sharpeRatio >= 3 ? '★ EXCEPTIONAL' : sharpeRatio >= 2 ? '✓ EXCELLENT' : sharpeRatio >= 1 ? '~ GOOD' : '⚠ POOR'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* VaR Card */}
+              <div className="card" style={{ borderRadius: '16px', padding: '28px', borderColor: 'rgba(249, 115, 22, 0.2)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+                  <div>
+                    <div style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em', marginBottom: '4px' }}>VALUE AT RISK</div>
+                    <div style={{ fontSize: '36px', fontWeight: '900', color: '#f97316', fontFamily: 'Inter, sans-serif' }}>
+                      -{var95.toFixed(2)}%
+                    </div>
+                  </div>
+                  <div style={{ padding: '8px 12px', background: 'rgba(249, 115, 22, 0.1)', borderRadius: '8px', border: '1px solid rgba(249, 115, 22, 0.2)' }}>
+                    <div style={{ fontSize: '10px', color: '#f97316', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>95% CONFIDENCE</div>
+                  </div>
+                </div>
+                <div style={{ borderTop: '1px solid rgba(148, 163, 184, 0.1)', paddingTop: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>99% VaR (1-day)</span>
+                    <span style={{ fontSize: '11px', color: '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>-{var99.toFixed(2)}%</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>Method</span>
+                    <span style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>HISTORICAL SIM</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>Sample Days</span>
+                    <span style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>{dailyReturns.length}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Kelly Criterion Card */}
+              <div className="card" style={{ borderRadius: '16px', padding: '28px', borderColor: 'rgba(16, 185, 129, 0.2)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+                  <div>
+                    <div style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em', marginBottom: '4px' }}>KELLY CRITERION</div>
+                    <div style={{ fontSize: '36px', fontWeight: '900', color: '#10b981', fontFamily: 'Inter, sans-serif' }}>
+                      {kellyCriterion.toFixed(2)}%
+                    </div>
+                  </div>
+                  <div style={{ padding: '8px 12px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                    <div style={{ fontSize: '10px', color: '#10b981', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>OPTIMAL BET %</div>
+                  </div>
+                </div>
+                <div style={{ borderTop: '1px solid rgba(148, 163, 184, 0.1)', paddingTop: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>Half Kelly (safer)</span>
+                    <span style={{ fontSize: '11px', color: '#10b981', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>{halfKelly.toFixed(2)}%</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>Quarter Kelly</span>
+                    <span style={{ fontSize: '11px', color: '#10b981', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>{quarterKelly.toFixed(2)}%</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>Actual Avg Bet</span>
+                    <span style={{ fontSize: '11px', 
+                      color: actualBetPct <= halfKelly ? '#10b981' : actualBetPct <= kellyCriterion ? '#F5A623' : '#ef4444',
+                      fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>
+                      {actualBetPct.toFixed(2)}% {actualBetPct <= halfKelly ? '✓' : actualBetPct <= kellyCriterion ? '~' : '⚠'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Drawdown Chart */}
+            {drawdownSeries.length > 1 && (
+              <div className="card" style={{ borderRadius: '16px', padding: '32px', marginBottom: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#ef4444', fontFamily: 'Inter, sans-serif', margin: 0 }}>
+                    Drawdown Profile
+                  </h3>
+                  <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>
+                    % decline from rolling peak
+                  </span>
+                </div>
+                <ResponsiveContainer width="100%" height={250}>
+                  <ComposedChart data={drawdownSeries}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.1)" />
+                    <XAxis dataKey="date" stroke="rgba(148, 163, 184, 0.3)" tick={{ fill: '#94a3b8', fontSize: 10 }} style={{ fontFamily: 'JetBrains Mono, monospace' }} />
+                    <YAxis stroke="rgba(148, 163, 184, 0.3)" tick={{ fill: '#94a3b8', fontSize: 10 }} tickFormatter={v => `${v.toFixed(0)}%`} />
+                    <Tooltip
+                      contentStyle={{ background: 'rgba(15,20,25,0.95)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', fontFamily: 'JetBrains Mono, monospace', fontSize: '11px' }}
+                      labelStyle={{ color: '#ef4444', fontWeight: '600' }}
+                      formatter={(value) => [`${value.toFixed(2)}%`, 'Drawdown']}
+                    />
+                    <Area type="monotone" dataKey="drawdown" stroke="#ef4444" fill="rgba(239,68,68,0.15)" strokeWidth={2} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {/* Return Distribution */}
+            {returnBuckets.some(b => b.count > 0) && (
+              <div className="card" style={{ borderRadius: '16px', padding: '32px', marginBottom: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#D4AF37', fontFamily: 'Inter, sans-serif', margin: 0 }}>
+                    Daily Return Distribution
+                  </h3>
+                  <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>
+                    % return per trading day
+                  </span>
+                </div>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={returnBuckets}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.1)" />
+                    <XAxis dataKey="range" stroke="rgba(148, 163, 184, 0.3)" tick={{ fill: '#94a3b8', fontSize: 9 }} />
+                    <YAxis stroke="rgba(148, 163, 184, 0.3)" tick={{ fill: '#94a3b8', fontSize: 10 }} />
+                    <Tooltip
+                      contentStyle={{ background: 'rgba(15,20,25,0.95)', border: '1px solid rgba(212,175,55,0.3)', borderRadius: '8px', fontFamily: 'JetBrains Mono, monospace', fontSize: '11px' }}
+                      labelStyle={{ color: '#D4AF37', fontWeight: '600' }}
+                      formatter={(value) => [value, 'Days']}
+                    />
+                    <Bar dataKey="count" radius={[4, 4, 0, 0]}
+                      fill="#D4AF37"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {/* Risk Summary Table */}
+            <div className="card" style={{ borderRadius: '16px', padding: '32px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#D4AF37', fontFamily: 'Inter, sans-serif', marginBottom: '20px' }}>
+                Risk Summary
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                {[
+                  { label: 'Win Rate', value: `${winRate.toFixed(1)}%`, status: winRate >= 55 ? 'good' : winRate >= 50 ? 'ok' : 'warn' },
+                  { label: 'Sharpe Ratio', value: sharpeRatio.toFixed(2), status: sharpeRatio >= 2 ? 'good' : sharpeRatio >= 1 ? 'ok' : 'warn' },
+                  { label: 'Max Drawdown', value: `-${maxDrawdown.toFixed(2)}%`, status: maxDrawdown < 10 ? 'good' : maxDrawdown < 20 ? 'ok' : 'warn' },
+                  { label: 'Current Drawdown', value: `-${currentDrawdownPct.toFixed(2)}%`, status: currentDrawdownPct < 5 ? 'good' : currentDrawdownPct < 15 ? 'ok' : 'warn' },
+                  { label: '95% VaR (1-day)', value: `-${var95.toFixed(2)}%`, status: var95 < 5 ? 'good' : var95 < 10 ? 'ok' : 'warn' },
+                  { label: '99% VaR (1-day)', value: `-${var99.toFixed(2)}%`, status: var99 < 10 ? 'good' : var99 < 20 ? 'ok' : 'warn' },
+                  { label: 'Full Kelly', value: `${kellyCriterion.toFixed(2)}%`, status: 'ok' },
+                  { label: 'Half Kelly (Rec.)', value: `${halfKelly.toFixed(2)}%`, status: 'good' },
+                  { label: 'Daily Volatility', value: `${stdDev.toFixed(2)}%`, status: stdDev < 5 ? 'good' : stdDev < 10 ? 'ok' : 'warn' },
+                  { label: 'Avg Daily Return', value: `${avgDailyReturn.toFixed(2)}%`, status: avgDailyReturn > 0 ? 'good' : 'warn' },
+                ].map((item, idx) => (
+                  <div key={idx} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '12px 16px', borderRadius: '8px',
+                    background: 'rgba(26, 31, 46, 0.4)',
+                    border: '1px solid rgba(148, 163, 184, 0.08)'
+                  }}>
+                    <span style={{ fontSize: '12px', color: '#94a3b8', fontFamily: 'JetBrains Mono, monospace' }}>{item.label}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '12px', fontWeight: '700', color: '#e8e6e3', fontFamily: 'JetBrains Mono, monospace' }}>{item.value}</span>
+                      <div style={{
+                        width: '8px', height: '8px', borderRadius: '50%',
+                        background: item.status === 'good' ? '#10b981' : item.status === 'ok' ? '#F5A623' : '#ef4444'
+                      }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
