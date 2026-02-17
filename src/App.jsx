@@ -265,6 +265,13 @@ export default function LiveTradingDashboard() {
   const filteredBets = getFilteredData(betsData);
   const filteredDaily = getFilteredData(dailyPNLData);
   
+  // Add manually calculated cumPNL to filteredDaily for charts (since cumPNL column doesn't parse)
+  let chartCumSum = 0;
+  const filteredDailyWithCum = filteredDaily.map(d => {
+    chartCumSum += d.totalPNL;
+    return { ...d, cumPNL: chartCumSum };
+  });
+  
   // For risk calculations, always use ALL daily data regardless of date filter
   // Risk metrics are portfolio-level and should always reflect full history
   const riskDaily = dailyPNLData;
@@ -292,8 +299,13 @@ export default function LiveTradingDashboard() {
   // ============================================================
 
   // 1. MAX DRAWDOWN
-  // Simple: highest cumPNL value = peak, lowest cumPNL AFTER that peak = trough
-  const cumPNLArr = riskDaily.map(d => d.cumPNL);
+  // Build cumPNL manually by summing totalPNL (we know this works - Sharpe uses it)
+  let runningSum = 0;
+  const cumPNLArr = riskDaily.map(d => {
+    runningSum += d.totalPNL;
+    return runningSum;
+  });
+  
   console.log('cumPNL sample (first 5):', cumPNLArr.slice(0, 5));
   console.log('cumPNL peak:', Math.max(...cumPNLArr));
   console.log('cumPNL latest:', cumPNLArr[cumPNLArr.length - 1]);
@@ -819,7 +831,7 @@ export default function LiveTradingDashboard() {
         </div>
 
         {/* Cumulative PNL Chart */}
-        {(activeView === 'all' || activeView === 'daily') && filteredDaily.length > 0 && (
+        {(activeView === 'all' || activeView === 'daily') && filteredDailyWithCum.length > 0 && (
           <div className="card" style={{ borderRadius: '16px', padding: '32px', marginBottom: '32px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
               <h2 style={{ 
@@ -833,7 +845,7 @@ export default function LiveTradingDashboard() {
               <div className="pulse" style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#D4AF37' }} />
             </div>
             <ResponsiveContainer width="100%" height={400}>
-              <ComposedChart data={filteredDaily}>
+              <ComposedChart data={filteredDailyWithCum}>
                 <defs>
                   <linearGradient id="colorPnl" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#D4AF37" stopOpacity={0.3}/>
