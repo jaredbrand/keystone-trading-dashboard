@@ -319,10 +319,6 @@ export default function LiveTradingDashboard() {
   console.log('cumPNL peak:', Math.max(...cumPNLArr));
   console.log('cumPNL latest:', cumPNLArr[cumPNLArr.length - 1]);
   
-  // Find index of peak (highest cumPNL)
-  const peakIndex = cumPNLArr.reduce((maxIdx, val, idx) => val > cumPNLArr[maxIdx] ? idx : maxIdx, 0);
-  const peakValue = cumPNLArr[peakIndex] || 0;
-  
   // Find the absolute all-time peak first
   const allTimePeak = Math.max(...cumPNLArr);
   const peakIndex = cumPNLArr.indexOf(allTimePeak);
