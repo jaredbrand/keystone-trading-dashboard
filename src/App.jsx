@@ -314,12 +314,22 @@ export default function LiveTradingDashboard() {
   const peakIndex = cumPNLArr.reduce((maxIdx, val, idx) => val > cumPNLArr[maxIdx] ? idx : maxIdx, 0);
   const peakValue = cumPNLArr[peakIndex] || 0;
   
-  // Find lowest value after the peak
-  const valuesAfterPeak = cumPNLArr.slice(peakIndex);
-  const troughValue = valuesAfterPeak.length > 0 ? Math.min(...valuesAfterPeak) : peakValue;
+  // Find the worst drawdown: for each point, look back to find the highest peak before it
+  let maxDrawdownPct = 0;
+  let runningPeak = cumPNLArr[0] || 0;
   
-  // Max drawdown = (trough - peak) / peak * 100
-  const maxDrawdown = peakValue > 0 ? Math.abs(((troughValue - peakValue) / peakValue) * 100) : 0;
+  cumPNLArr.forEach((val, i) => {
+    if (val > runningPeak) runningPeak = val;
+    if (runningPeak > 0) {
+      const dd = ((val - runningPeak) / runningPeak) * 100;
+      if (dd < maxDrawdownPct) maxDrawdownPct = dd;
+    }
+  });
+  
+  const maxDrawdown = Math.abs(maxDrawdownPct);
+  
+  console.log('Max DD calc - worst %:', maxDrawdown.toFixed(2));
+  console.log('Max DD calc - running peak used:', runningPeak);
 
   // Current value vs peak for current drawdown
   const latestCumValue = cumPNLArr[cumPNLArr.length - 1] || 0;
