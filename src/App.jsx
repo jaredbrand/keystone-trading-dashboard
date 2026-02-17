@@ -121,6 +121,7 @@ export default function LiveTradingDashboard() {
           game: bet['Game Number'],
           fixture: bet['Fixture'],
           date: bet['FixtureDate'],
+          sport: bet['Sport'] || row[1] || 'Unknown', // Column B
           market: bet['Market'],
           selection: bet['Selection'],
           handicap: bet['Handicap'] ? parseFloat(bet['Handicap']) : null,
@@ -474,6 +475,22 @@ export default function LiveTradingDashboard() {
     winRate: data.wins + data.losses > 0 ? (data.wins / (data.wins + data.losses)) * 100 : 0
   }));
 
+  // Performance by Sport (from column B - Sport)
+  const sportPerformance = Object.entries(
+    filteredBets.reduce((acc, bet) => {
+      const sport = bet.sport || 'Unknown';
+      if (!acc[sport]) acc[sport] = { wins: 0, losses: 0, pnl: 0 };
+      if (bet.outcome === 'Win') acc[sport].wins++;
+      if (bet.outcome === 'Loss') acc[sport].losses++;
+      acc[sport].pnl += bet.pnl;
+      return acc;
+    }, {})
+  ).map(([sport, data]) => ({
+    sport,
+    ...data,
+    winRate: data.wins + data.losses > 0 ? (data.wins / (data.wins + data.losses)) * 100 : 0
+  }));
+
   // Show password screen if not authenticated
   if (!isAuthenticated) {
     return (
@@ -772,7 +789,7 @@ export default function LiveTradingDashboard() {
                 letterSpacing: '0.05em'
               }}
             >
-              {view === 'all' ? 'All Views' : view === 'daily' ? 'Daily P&L' : view === 'risk' ? '⚠ Risk' : view}
+              {view === 'all' ? 'All Views' : view === 'bets' ? 'Trades' : view === 'daily' ? 'Daily P&L' : view === 'risk' ? '⚠ Risk' : view}
             </button>
           ))}
         </div>
@@ -1062,6 +1079,55 @@ export default function LiveTradingDashboard() {
                 <Bar 
                   dataKey="pnl" 
                   fill="#D4AF37" 
+                  radius={[8, 8, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {/* Sport Performance */}
+        {(activeView === 'all' || activeView === 'bets') && sportPerformance.length > 0 && (
+          <div className="card" style={{ borderRadius: '16px', padding: '32px', marginBottom: '32px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+              <h2 style={{ 
+                fontSize: '20px', 
+                fontWeight: '700', 
+                fontFamily: 'Inter, sans-serif',
+                color: '#D4AF37'
+              }}>
+                Performance by Sport
+              </h2>
+              <div className="pulse" style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#D4AF37' }} />
+            </div>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={sportPerformance}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.1)" />
+                <XAxis 
+                  dataKey="sport" 
+                  stroke="rgba(148, 163, 184, 0.3)" 
+                  style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', fontWeight: '500' }}
+                  tick={{ fill: '#94a3b8' }}
+                />
+                <YAxis 
+                  stroke="rgba(148, 163, 184, 0.3)" 
+                  style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '10px' }}
+                  tickFormatter={(value) => `$${value.toLocaleString()}`}
+                  tick={{ fill: '#94a3b8' }}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    background: 'rgba(15, 20, 25, 0.95)', 
+                    border: '1px solid rgba(212, 175, 55, 0.3)',
+                    borderRadius: '8px',
+                    fontFamily: 'JetBrains Mono, monospace',
+                    fontSize: '11px'
+                  }}
+                  labelStyle={{ color: '#D4AF37', fontWeight: '600' }}
+                />
+                <Bar 
+                  dataKey="pnl" 
+                  fill="#10b981" 
                   radius={[8, 8, 0, 0]}
                 />
               </BarChart>
