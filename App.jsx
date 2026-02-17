@@ -1364,8 +1364,6 @@ export default function LiveTradingDashboard() {
               </div>
             </div>
           </div>
-        </div>
-        </div>
         )}
 
       </main>
