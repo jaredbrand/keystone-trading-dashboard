@@ -288,21 +288,22 @@ export default function LiveTradingDashboard() {
   // ============================================================
 
   // 1. MAX DRAWDOWN
-  // Use cumPNL directly from sheet (already cumulative, most accurate)
-  // Find the actual peak and trough from cumulative PNL values
-  const cumPNLValues = filteredDaily.map(d => d.cumPNL).filter(v => v !== 0);
-  
+  // Build cumulative PNL by summing totalPNL (we know this parses correctly - Sharpe uses it)
+  let runningTotal = 0;
+  const builtCumPNL = filteredDaily.map(d => {
+    runningTotal += d.totalPNL;
+    return runningTotal;
+  });
+
   let ddPeak = 0;
   let maxDrawdownAbs = 0;
   let drawdownSeries = [];
 
-  filteredDaily.forEach((day, i) => {
-    const val = day.cumPNL;
+  builtCumPNL.forEach((val, i) => {
     if (val > ddPeak) ddPeak = val;
-    // Drawdown as % of peak - only when we have a meaningful peak
     const dd = ddPeak > 1000 ? ((val - ddPeak) / ddPeak) * 100 : 0;
     drawdownSeries.push({ 
-      date: day.date || '', 
+      date: filteredDaily[i]?.date || '', 
       drawdown: parseFloat(Math.min(0, dd).toFixed(2)), 
       cumPNL: val 
     });
@@ -312,15 +313,16 @@ export default function LiveTradingDashboard() {
   const maxDrawdown = Math.abs(maxDrawdownAbs);
 
   // Current drawdown from all-time peak
-  const latestCum = filteredDaily[filteredDaily.length - 1]?.cumPNL || 0;
-  const allTimePeak = Math.max(...cumPNLValues, 0);
+  const latestCum = builtCumPNL[builtCumPNL.length - 1] || 0;
+  const allTimePeak = Math.max(...builtCumPNL, 0);
   const currentDrawdownPct = allTimePeak > 0 ? Math.max(0, ((allTimePeak - latestCum) / allTimePeak) * 100) : 0;
 
   // 2. SHARPE RATIO
-  // Using daily returns as % of daily traded amount
+  // Using daily returns as % of daily traded amount - exclude days with tiny risk (< $1000)
   const dailyReturns = filteredDaily
-    .filter(d => d.totalRisk > 0)
-    .map(d => (d.totalPNL / d.totalRisk) * 100);
+    .filter(d => d.totalRisk > 1000)  // exclude near-zero risk days that cause extreme % values
+    .map(d => (d.totalPNL / d.totalRisk) * 100)
+    .filter(r => r > -100 && r < 200); // exclude any extreme outliers
   const avgDailyReturn = dailyReturns.length > 0
     ? dailyReturns.reduce((a, b) => a + b, 0) / dailyReturns.length : 0;
   const stdDev = dailyReturns.length > 1
