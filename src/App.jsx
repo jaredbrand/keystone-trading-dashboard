@@ -318,11 +318,16 @@ export default function LiveTradingDashboard() {
   const currentDrawdownPct = allTimePeak > 0 ? Math.max(0, ((allTimePeak - latestCum) / allTimePeak) * 100) : 0;
 
   // 2. SHARPE RATIO
-  // Using daily returns as % of daily traded amount - exclude days with tiny risk (< $1000)
+  // Using daily returns as % of daily traded amount - only exclude zero-risk days
   const dailyReturns = filteredDaily
-    .filter(d => d.totalRisk > 1000)  // exclude near-zero risk days that cause extreme % values
-    .map(d => (d.totalPNL / d.totalRisk) * 100)
-    .filter(r => r > -100 && r < 200); // exclude any extreme outliers
+    .filter(d => d.totalRisk > 0)
+    .map(d => (d.totalPNL / d.totalRisk) * 100);
+
+  // DEBUG - log first 5 daily values to check parsing
+  console.log('=== DAILY DATA CHECK ===');
+  console.log('First 5 days totalPNL:', filteredDaily.slice(0, 5).map(d => ({date: d.date, pnl: d.totalPNL, risk: d.totalRisk})));
+  console.log('Built cumPNL peak:', Math.max(...(filteredDaily.reduce((acc, d) => { const prev = acc.length > 0 ? acc[acc.length-1] : 0; acc.push(prev + d.totalPNL); return acc; }, []))));
+  console.log('========================');
   const avgDailyReturn = dailyReturns.length > 0
     ? dailyReturns.reduce((a, b) => a + b, 0) / dailyReturns.length : 0;
   const stdDev = dailyReturns.length > 1
@@ -333,7 +338,6 @@ export default function LiveTradingDashboard() {
 
   // 3. VALUE AT RISK (VaR) - Historical simulation
   // Only use days where we had actual losses for VaR calculation
-  const losingReturns = dailyReturns.filter(r => r < 0).sort((a, b) => a - b);
   const allSortedReturns = [...dailyReturns].sort((a, b) => a - b);
   
   // 95% VaR: worst 5% of all days
