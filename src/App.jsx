@@ -132,15 +132,26 @@ export default function LiveTradingDashboard() {
         dailyHeaders.forEach((header, idx) => {
           day[header] = row[idx] || '';
         });
+
+        // Helper to parse currency/number values including negative parentheses format
+        const parseNum = (str) => {
+          if (!str) return 0;
+          let cleaned = String(str).replace(/[$,\s]/g, '');
+          if (cleaned.startsWith('(') && cleaned.endsWith(')')) {
+            cleaned = '-' + cleaned.slice(1, -1);
+          }
+          return parseFloat(cleaned) || 0;
+        };
+
         return {
           date: day['Date'],
           numBets: parseInt(day['Num Bets']) || 0,
-          totalRisk: parseFloat(day['Total Risk']?.replace(/[$,]/g, '')) || 0,
-          totalPNL: parseFloat(day['Total PNL']?.replace(/[$,()]/g, '').replace('-', '-')) || 0,
-          cumPNL: parseFloat(day['Cumulative PNL']?.replace(/[$,()]/g, '').replace('-', '-')) || 0,
-          avgEdge: parseFloat(day['Average Edge']?.replace('%', '')) || 0,
-          roi: parseFloat(day['ROI (%)']?.replace('%', '')) || 0,
-          winRate: parseFloat(day['Win Rate']?.replace('%', '')) || 0
+          totalRisk: parseNum(day['Total Risk']),
+          totalPNL: parseNum(day['Total PNL']),
+          cumPNL: parseNum(day['Cumulative PNL']),
+          avgEdge: parseFloat((day['Average Edge'] || '').replace('%', '')) || 0,
+          roi: parseFloat((day['ROI (%)'] || '').replace('%', '')) || 0,
+          winRate: parseFloat((day['Win Rate'] || '').replace('%', '')) || 0
         };
       }).filter(day => day.date && day.date !== ''); // Filter out empty rows
 
@@ -325,9 +336,17 @@ export default function LiveTradingDashboard() {
   const kellyCriterion = b > 0 ? ((b * p - q) / b) * 100 : 0;
   const halfKelly = kellyCriterion / 2;
   const quarterKelly = kellyCriterion / 4;
+  const thirdKelly = kellyCriterion * 0.3; // 0.3 Kelly - your actual strategy
 
-  // Actual avg bet size as % (using hold as proxy for edge extraction)
-  const actualBetPct = summaryData?.avgBetSize || 0;
+  // Actual avg bet size as % of total traded (from column N - Bet Amount)
+  // Calculated as: avg single bet / total traded * 100 to get relative bet sizing %
+  const avgBetAmount = filteredBets.length > 0
+    ? filteredBets.reduce((sum, bet) => sum + bet.betAmount, 0) / filteredBets.length : 0;
+  const totalAvgTraded = totalTraded > 0 ? totalTraded / filteredBets.length : 0;
+  // Express actual avg bet as % of total bankroll proxy (avg daily risk)
+  const avgDailyRisk = filteredDaily.length > 0
+    ? filteredDaily.reduce((sum, d) => sum + d.totalRisk, 0) / filteredDaily.length : 0;
+  const actualBetPct = avgDailyRisk > 0 ? (avgBetAmount / avgDailyRisk) * 100 : 0;
 
   // Risk rating (composite score)
   const riskScore = Math.min(100, Math.max(0,
@@ -1247,24 +1266,24 @@ export default function LiveTradingDashboard() {
                     </div>
                   </div>
                   <div style={{ padding: '8px 12px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-                    <div style={{ fontSize: '10px', color: '#10b981', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>OPTIMAL BET %</div>
+                    <div style={{ fontSize: '10px', color: '#10b981', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>FULL KELLY</div>
                   </div>
                 </div>
                 <div style={{ borderTop: '1px solid rgba(148, 163, 184, 0.1)', paddingTop: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>Half Kelly (safer)</span>
-                    <span style={{ fontSize: '11px', color: '#10b981', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>{halfKelly.toFixed(2)}%</span>
+                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>0.3 Kelly (Your Strategy)</span>
+                    <span style={{ fontSize: '11px', color: '#10b981', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>{thirdKelly.toFixed(2)}%</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>Quarter Kelly</span>
-                    <span style={{ fontSize: '11px', color: '#10b981', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>{quarterKelly.toFixed(2)}%</span>
+                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>Half Kelly</span>
+                    <span style={{ fontSize: '11px', color: '#10b981', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>{halfKelly.toFixed(2)}%</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>Actual Avg Bet</span>
+                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>Avg Bet Size (Col N)</span>
                     <span style={{ fontSize: '11px', 
-                      color: actualBetPct <= halfKelly ? '#10b981' : actualBetPct <= kellyCriterion ? '#F5A623' : '#ef4444',
+                      color: actualBetPct <= thirdKelly ? '#10b981' : actualBetPct <= kellyCriterion ? '#F5A623' : '#ef4444',
                       fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>
-                      {actualBetPct.toFixed(2)}% {actualBetPct <= halfKelly ? '✓' : actualBetPct <= kellyCriterion ? '~' : '⚠'}
+                      ${avgBetAmount.toLocaleString(undefined, {maximumFractionDigits: 0})} {actualBetPct <= thirdKelly ? '✓' : actualBetPct <= kellyCriterion ? '~' : '⚠'}
                     </span>
                   </div>
                 </div>
@@ -1341,7 +1360,8 @@ export default function LiveTradingDashboard() {
                   { label: '95% VaR (1-day)', value: `-${var95.toFixed(2)}%`, status: var95 < 5 ? 'good' : var95 < 10 ? 'ok' : 'warn' },
                   { label: '99% VaR (1-day)', value: `-${var99.toFixed(2)}%`, status: var99 < 10 ? 'good' : var99 < 20 ? 'ok' : 'warn' },
                   { label: 'Full Kelly', value: `${kellyCriterion.toFixed(2)}%`, status: 'ok' },
-                  { label: 'Half Kelly (Rec.)', value: `${halfKelly.toFixed(2)}%`, status: 'good' },
+                  { label: '0.3 Kelly (Your Strategy)', value: `${thirdKelly.toFixed(2)}%`, status: 'good' },
+                  { label: 'Half Kelly', value: `${halfKelly.toFixed(2)}%`, status: 'good' },
                   { label: 'Daily Volatility', value: `${stdDev.toFixed(2)}%`, status: stdDev < 5 ? 'good' : stdDev < 10 ? 'ok' : 'warn' },
                   { label: 'Avg Daily Return', value: `${avgDailyReturn.toFixed(2)}%`, status: avgDailyReturn > 0 ? 'good' : 'warn' },
                 ].map((item, idx) => (
