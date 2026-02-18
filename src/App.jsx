@@ -15,7 +15,7 @@ export default function LiveTradingDashboard() {
   const [passwordError, setPasswordError] = useState('');
   
   // Set your password here (change this to whatever you want)
-  const DASHBOARD_PASSWORD = 'keystone2025';
+  const DASHBOARD_PASSWORD = 'keystone+';
   
   // Data states
   const [betsData, setBetsData] = useState([]);
