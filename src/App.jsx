@@ -16,7 +16,7 @@ export default function LiveTradingDashboard() {
   const [passwordError, setPasswordError] = useState('');
   
   // Set your password here (change this to whatever you want)
-  const DASHBOARD_PASSWORD = 'keystone+';
+  const DASHBOARD_PASSWORD = 'keystone2025';
   
   // Data states
   const [betsData, setBetsData] = useState([]);
@@ -1464,7 +1464,7 @@ export default function LiveTradingDashboard() {
 
               {/* Analytics Sub-Tabs */}
               <div style={{ display: 'flex', gap: '8px', marginBottom: '32px', flexWrap: 'wrap' }}>
-                {['sports', 'markets', 'edges', 'teams', 'overunder', 'odds'].map(tab => (
+                {['sports', 'markets', 'edges', 'overunder', 'odds'].map(tab => (
                   <button
                     key={tab}
                     onClick={() => setAnalyticsTab(tab)}
@@ -1598,6 +1598,7 @@ export default function LiveTradingDashboard() {
                             fontSize: '11px'
                           }}
                           labelStyle={{ color: '#D4AF37', fontWeight: '600' }}
+                          formatter={(value) => `${value.toFixed(2)}%`}
                         />
                         <Bar dataKey="hold" fill="#D4AF37" radius={[8, 8, 0, 0]} />
                       </BarChart>
@@ -1639,42 +1640,6 @@ export default function LiveTradingDashboard() {
                 </div>
               )}
 
-              {/* Teams Analytics */}
-              {analyticsTab === 'teams' && (
-                <div className="card" style={{ borderRadius: '16px', padding: '32px' }}>
-                  <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#D4AF37', fontFamily: 'Inter, sans-serif', marginBottom: '24px' }}>
-                    Performance by Team (3+ Games)
-                  </h3>
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 8px' }}>
-                      <thead>
-                        <tr>
-                          <th style={{ textAlign: 'left', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>TEAM</th>
-                          <th style={{ textAlign: 'right', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>GAMES</th>
-                          <th style={{ textAlign: 'right', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>WIN RATE</th>
-                          <th style={{ textAlign: 'right', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>P&L</th>
-                          <th style={{ textAlign: 'right', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>HOLD %</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {teamAnalytics.map((team, idx) => (
-                          <tr key={idx} style={{ background: 'rgba(26, 31, 46, 0.4)', borderRadius: '8px' }}>
-                            <td style={{ padding: '16px', fontFamily: 'Inter, sans-serif', fontWeight: '600', color: '#e8e6e3', borderTopLeftRadius: '8px', borderBottomLeftRadius: '8px' }}>{team.team}</td>
-                            <td style={{ padding: '16px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', color: '#94a3b8' }}>{team.games}</td>
-                            <td style={{ padding: '16px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', color: '#94a3b8' }}>{team.winRate.toFixed(1)}%</td>
-                            <td style={{ padding: '16px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', fontWeight: '700', color: team.pnl >= 0 ? '#10b981' : '#ef4444' }}>
-                              {team.pnl >= 0 ? '+' : ''}${team.pnl.toLocaleString(undefined, {maximumFractionDigits: 0})}
-                            </td>
-                            <td style={{ padding: '16px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600', color: team.hold >= 0 ? '#10b981' : '#ef4444', borderTopRightRadius: '8px', borderBottomRightRadius: '8px' }}>
-                              {team.hold >= 0 ? '+' : ''}{team.hold.toFixed(2)}%
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
 
               {/* Over/Under Analytics */}
               {analyticsTab === 'overunder' && (
