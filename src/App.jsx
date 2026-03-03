@@ -1458,7 +1458,7 @@ export default function LiveTradingDashboard() {
                   Performance Analytics
                 </h2>
                 <p style={{ color: '#64748b', fontSize: '12px', fontFamily: 'JetBrains Mono, monospace' }}>
-                  Deep dive into performance across sports, markets, edges, teams & bet types
+                  Deep dive into performance across sports, markets, edges & bet types
                 </p>
               </div>
 
