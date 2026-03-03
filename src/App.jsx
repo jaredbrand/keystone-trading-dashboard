@@ -15,7 +15,7 @@ export default function LiveTradingDashboard() {
   const [passwordError, setPasswordError] = useState('');
   
   // Set your password here (change this to whatever you want)
-  const DASHBOARD_PASSWORD = 'keystone+';
+  const DASHBOARD_PASSWORD = 'keystone2025';
   
   // Data states
   const [betsData, setBetsData] = useState([]);
@@ -767,7 +767,7 @@ export default function LiveTradingDashboard() {
         
         {/* View Toggles */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '32px', flexWrap: 'wrap' }}>
-          {['all', 'bets', 'daily', 'summary', 'log', 'risk'].map(view => (
+          {['all', 'bets', 'daily', 'summary', 'analytics', 'log', 'risk'].map(view => (
             <button
               key={view}
               onClick={() => setActiveView(view)}
@@ -789,7 +789,7 @@ export default function LiveTradingDashboard() {
                 letterSpacing: '0.05em'
               }}
             >
-              {view === 'all' ? 'All Views' : view === 'bets' ? 'Trades' : view === 'daily' ? 'Daily P&L' : view === 'log' ? 'Historical Log' : view === 'risk' ? '⚠ Risk' : view}
+              {view === 'all' ? 'All Views' : view === 'bets' ? 'Trades' : view === 'daily' ? 'Daily P&L' : view === 'analytics' ? 'Analytics' : view === 'log' ? 'Historical Log' : view === 'risk' ? '⚠ Risk' : view}
             </button>
           ))}
         </div>
@@ -1270,6 +1270,497 @@ export default function LiveTradingDashboard() {
             </div>
           </div>
         )}
+
+        {/* ============================================================ */}
+        {/* ANALYTICS VIEW                                             */}
+        {/* ============================================================ */}
+        {activeView === 'analytics' && (() => {
+          const [analyticsTab, setAnalyticsTab] = React.useState('sports');
+          
+          // Performance by Sport with detailed metrics
+          const sportAnalytics = Object.entries(
+            filteredBets.reduce((acc, bet) => {
+              const sport = bet.sport || 'Unknown';
+              if (!acc[sport]) acc[sport] = { 
+                wins: 0, losses: 0, pnl: 0, totalRisk: 0, 
+                edges: [], odds: [], betAmounts: [] 
+              };
+              if (bet.outcome === 'Win') acc[sport].wins++;
+              if (bet.outcome === 'Loss') acc[sport].losses++;
+              acc[sport].pnl += bet.pnl;
+              acc[sport].totalRisk += bet.betAmount;
+              acc[sport].edges.push(bet.margin);
+              acc[sport].odds.push(bet.odds);
+              acc[sport].betAmounts.push(bet.betAmount);
+              return acc;
+            }, {})
+          ).map(([sport, data]) => ({
+            sport,
+            wins: data.wins,
+            losses: data.losses,
+            trades: data.wins + data.losses,
+            winRate: data.wins + data.losses > 0 ? (data.wins / (data.wins + data.losses)) * 100 : 0,
+            pnl: data.pnl,
+            hold: data.totalRisk > 0 ? (data.pnl / data.totalRisk) * 100 : 0,
+            avgEdge: data.edges.length > 0 ? data.edges.reduce((a,b) => a+b, 0) / data.edges.length : 0,
+            avgOdds: data.odds.length > 0 ? data.odds.reduce((a,b) => a+b, 0) / data.odds.length : 0,
+            avgBet: data.betAmounts.length > 0 ? data.betAmounts.reduce((a,b) => a+b, 0) / data.betAmounts.length : 0
+          })).sort((a, b) => b.pnl - a.pnl);
+
+          // Performance by Market
+          const marketAnalytics = Object.entries(
+            filteredBets.reduce((acc, bet) => {
+              const market = bet.market || 'Unknown';
+              if (!acc[market]) acc[market] = { 
+                wins: 0, losses: 0, pnl: 0, totalRisk: 0, 
+                edges: [], odds: [] 
+              };
+              if (bet.outcome === 'Win') acc[market].wins++;
+              if (bet.outcome === 'Loss') acc[market].losses++;
+              acc[market].pnl += bet.pnl;
+              acc[market].totalRisk += bet.betAmount;
+              acc[market].edges.push(bet.margin);
+              acc[market].odds.push(bet.odds);
+              return acc;
+            }, {})
+          ).map(([market, data]) => ({
+            market,
+            wins: data.wins,
+            losses: data.losses,
+            trades: data.wins + data.losses,
+            winRate: data.wins + data.losses > 0 ? (data.wins / (data.wins + data.losses)) * 100 : 0,
+            pnl: data.pnl,
+            hold: data.totalRisk > 0 ? (data.pnl / data.totalRisk) * 100 : 0,
+            avgEdge: data.edges.length > 0 ? data.edges.reduce((a,b) => a+b, 0) / data.edges.length : 0,
+            avgOdds: data.odds.length > 0 ? data.odds.reduce((a,b) => a+b, 0) / data.odds.length : 0
+          })).sort((a, b) => b.pnl - a.pnl);
+
+          // Performance by Edge Size Buckets
+          const edgeBuckets = [
+            { label: '0-5%', min: 0, max: 5 },
+            { label: '5-10%', min: 5, max: 10 },
+            { label: '10-15%', min: 10, max: 15 },
+            { label: '15-20%', min: 15, max: 20 },
+            { label: '20%+', min: 20, max: 999 }
+          ];
+          
+          const edgeAnalytics = edgeBuckets.map(bucket => {
+            const bets = filteredBets.filter(b => 
+              b.margin >= bucket.min && b.margin < bucket.max
+            );
+            const wins = bets.filter(b => b.outcome === 'Win').length;
+            const losses = bets.filter(b => b.outcome === 'Loss').length;
+            const totalRisk = bets.reduce((sum, b) => sum + b.betAmount, 0);
+            const pnl = bets.reduce((sum, b) => sum + b.pnl, 0);
+            
+            return {
+              edge: bucket.label,
+              trades: bets.length,
+              wins,
+              losses,
+              winRate: wins + losses > 0 ? (wins / (wins + losses)) * 100 : 0,
+              pnl,
+              hold: totalRisk > 0 ? (pnl / totalRisk) * 100 : 0,
+              avgEdge: bets.length > 0 ? bets.reduce((sum, b) => sum + b.margin, 0) / bets.length : 0
+            };
+          });
+
+          // Performance by Team (most frequent teams)
+          const teamData = filteredBets.reduce((acc, bet) => {
+            // Extract teams from fixture (e.g., "BOS @ LAL" -> ["BOS", "LAL"])
+            const teams = bet.fixture.split('@').map(t => t.trim()).filter(t => t);
+            teams.forEach(team => {
+              if (!acc[team]) acc[team] = { 
+                wins: 0, losses: 0, pnl: 0, totalRisk: 0, games: 0 
+              };
+              if (bet.outcome === 'Win') acc[team].wins++;
+              if (bet.outcome === 'Loss') acc[team].losses++;
+              acc[team].pnl += bet.pnl;
+              acc[team].totalRisk += bet.betAmount;
+              acc[team].games++;
+            });
+            return acc;
+          }, {});
+
+          const teamAnalytics = Object.entries(teamData)
+            .map(([team, data]) => ({
+              team,
+              games: data.games,
+              wins: data.wins,
+              losses: data.losses,
+              winRate: data.wins + data.losses > 0 ? (data.wins / (data.wins + data.losses)) * 100 : 0,
+              pnl: data.pnl,
+              hold: data.totalRisk > 0 ? (data.pnl / data.totalRisk) * 100 : 0
+            }))
+            .filter(t => t.games >= 3) // Only teams with 3+ games
+            .sort((a, b) => b.pnl - a.pnl)
+            .slice(0, 20); // Top 20 teams
+
+          // Over/Under Performance
+          const ouData = filteredBets.reduce((acc, bet) => {
+            const isOU = bet.selection?.toLowerCase().includes('over') || 
+                        bet.selection?.toLowerCase().includes('under');
+            if (!isOU) return acc;
+            
+            const type = bet.selection?.toLowerCase().includes('over') ? 'Over' : 'Under';
+            if (!acc[type]) acc[type] = { wins: 0, losses: 0, pnl: 0, totalRisk: 0 };
+            if (bet.outcome === 'Win') acc[type].wins++;
+            if (bet.outcome === 'Loss') acc[type].losses++;
+            acc[type].pnl += bet.pnl;
+            acc[type].totalRisk += bet.betAmount;
+            return acc;
+          }, {});
+
+          const ouAnalytics = Object.entries(ouData).map(([type, data]) => ({
+            type,
+            wins: data.wins,
+            losses: data.losses,
+            trades: data.wins + data.losses,
+            winRate: data.wins + data.losses > 0 ? (data.wins / (data.wins + data.losses)) * 100 : 0,
+            pnl: data.pnl,
+            hold: data.totalRisk > 0 ? (data.pnl / data.totalRisk) * 100 : 0
+          }));
+
+          // Odds Range Performance
+          const oddsRanges = [
+            { label: '1.50-1.75', min: 1.50, max: 1.75 },
+            { label: '1.75-2.00', min: 1.75, max: 2.00 },
+            { label: '2.00-2.25', min: 2.00, max: 2.25 },
+            { label: '2.25-2.50', min: 2.25, max: 2.50 },
+            { label: '2.50+', min: 2.50, max: 99 }
+          ];
+
+          const oddsAnalytics = oddsRanges.map(range => {
+            const bets = filteredBets.filter(b => 
+              b.odds >= range.min && b.odds < range.max
+            );
+            const wins = bets.filter(b => b.outcome === 'Win').length;
+            const losses = bets.filter(b => b.outcome === 'Loss').length;
+            const totalRisk = bets.reduce((sum, b) => sum + b.betAmount, 0);
+            const pnl = bets.reduce((sum, b) => sum + b.pnl, 0);
+            
+            return {
+              oddsRange: range.label,
+              trades: bets.length,
+              wins,
+              losses,
+              winRate: wins + losses > 0 ? (wins / (wins + losses)) * 100 : 0,
+              pnl,
+              hold: totalRisk > 0 ? (pnl / totalRisk) * 100 : 0
+            };
+          }).filter(r => r.trades > 0);
+
+          return (
+            <div>
+              {/* Analytics Header */}
+              <div style={{ marginBottom: '32px' }}>
+                <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#D4AF37', fontFamily: 'Inter, sans-serif', marginBottom: '8px' }}>
+                  Performance Analytics
+                </h2>
+                <p style={{ color: '#64748b', fontSize: '12px', fontFamily: 'JetBrains Mono, monospace' }}>
+                  Deep dive into performance across sports, markets, edges, teams & bet types
+                </p>
+              </div>
+
+              {/* Analytics Sub-Tabs */}
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '32px', flexWrap: 'wrap' }}>
+                {['sports', 'markets', 'edges', 'teams', 'overunder', 'odds'].map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setAnalyticsTab(tab)}
+                    style={{
+                      padding: '10px 20px',
+                      borderRadius: '6px',
+                      border: analyticsTab === tab ? '1px solid #D4AF37' : '1px solid rgba(148, 163, 184, 0.15)',
+                      background: analyticsTab === tab ? 'rgba(212, 175, 55, 0.15)' : 'transparent',
+                      color: analyticsTab === tab ? '#D4AF37' : '#94a3b8',
+                      fontWeight: '500',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      fontFamily: 'Inter, sans-serif',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em'
+                    }}
+                  >
+                    {tab === 'overunder' ? 'Over/Under' : tab}
+                  </button>
+                ))}
+              </div>
+
+              {/* Sports Analytics */}
+              {analyticsTab === 'sports' && (
+                <div className="card" style={{ borderRadius: '16px', padding: '32px' }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#D4AF37', fontFamily: 'Inter, sans-serif', marginBottom: '24px' }}>
+                    Performance by Sport
+                  </h3>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 8px' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ textAlign: 'left', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>SPORT</th>
+                          <th style={{ textAlign: 'right', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>TRADES</th>
+                          <th style={{ textAlign: 'right', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>WIN RATE</th>
+                          <th style={{ textAlign: 'right', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>P&L</th>
+                          <th style={{ textAlign: 'right', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>HOLD %</th>
+                          <th style={{ textAlign: 'right', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>AVG EDGE</th>
+                          <th style={{ textAlign: 'right', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>AVG ODDS</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sportAnalytics.map((sport, idx) => (
+                          <tr key={idx} style={{ background: 'rgba(26, 31, 46, 0.4)', borderRadius: '8px' }}>
+                            <td style={{ padding: '16px', fontFamily: 'Inter, sans-serif', fontWeight: '600', color: '#e8e6e3', borderTopLeftRadius: '8px', borderBottomLeftRadius: '8px' }}>{sport.sport}</td>
+                            <td style={{ padding: '16px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', color: '#94a3b8' }}>{sport.trades}</td>
+                            <td style={{ padding: '16px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', color: '#94a3b8' }}>{sport.winRate.toFixed(1)}%</td>
+                            <td style={{ padding: '16px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', fontWeight: '700', color: sport.pnl >= 0 ? '#10b981' : '#ef4444' }}>
+                              {sport.pnl >= 0 ? '+' : ''}${sport.pnl.toLocaleString(undefined, {maximumFractionDigits: 0})}
+                            </td>
+                            <td style={{ padding: '16px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600', color: sport.hold >= 0 ? '#10b981' : '#ef4444' }}>
+                              {sport.hold >= 0 ? '+' : ''}{sport.hold.toFixed(2)}%
+                            </td>
+                            <td style={{ padding: '16px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', color: '#D4AF37' }}>{sport.avgEdge.toFixed(1)}%</td>
+                            <td style={{ padding: '16px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', color: '#94a3b8', borderTopRightRadius: '8px', borderBottomRightRadius: '8px' }}>{sport.avgOdds.toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Markets Analytics */}
+              {analyticsTab === 'markets' && (
+                <div className="card" style={{ borderRadius: '16px', padding: '32px' }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#D4AF37', fontFamily: 'Inter, sans-serif', marginBottom: '24px' }}>
+                    Performance by Market
+                  </h3>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 8px' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ textAlign: 'left', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>MARKET</th>
+                          <th style={{ textAlign: 'right', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>TRADES</th>
+                          <th style={{ textAlign: 'right', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>WIN RATE</th>
+                          <th style={{ textAlign: 'right', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>P&L</th>
+                          <th style={{ textAlign: 'right', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>HOLD %</th>
+                          <th style={{ textAlign: 'right', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>AVG EDGE</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {marketAnalytics.map((market, idx) => (
+                          <tr key={idx} style={{ background: 'rgba(26, 31, 46, 0.4)', borderRadius: '8px' }}>
+                            <td style={{ padding: '16px', fontFamily: 'Inter, sans-serif', fontWeight: '600', color: '#e8e6e3', borderTopLeftRadius: '8px', borderBottomLeftRadius: '8px' }}>{market.market}</td>
+                            <td style={{ padding: '16px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', color: '#94a3b8' }}>{market.trades}</td>
+                            <td style={{ padding: '16px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', color: '#94a3b8' }}>{market.winRate.toFixed(1)}%</td>
+                            <td style={{ padding: '16px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', fontWeight: '700', color: market.pnl >= 0 ? '#10b981' : '#ef4444' }}>
+                              {market.pnl >= 0 ? '+' : ''}${market.pnl.toLocaleString(undefined, {maximumFractionDigits: 0})}
+                            </td>
+                            <td style={{ padding: '16px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600', color: market.hold >= 0 ? '#10b981' : '#ef4444' }}>
+                              {market.hold >= 0 ? '+' : ''}{market.hold.toFixed(2)}%
+                            </td>
+                            <td style={{ padding: '16px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', color: '#D4AF37', borderTopRightRadius: '8px', borderBottomRightRadius: '8px' }}>{market.avgEdge.toFixed(1)}%</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Edge Size Analytics */}
+              {analyticsTab === 'edges' && (
+                <div>
+                  <div className="card" style={{ borderRadius: '16px', padding: '32px', marginBottom: '24px' }}>
+                    <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#D4AF37', fontFamily: 'Inter, sans-serif', marginBottom: '24px' }}>
+                      Performance by Edge Size
+                    </h3>
+                    <ResponsiveContainer width="100%" height={350}>
+                      <BarChart data={edgeAnalytics}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.1)" />
+                        <XAxis 
+                          dataKey="edge" 
+                          stroke="rgba(148, 163, 184, 0.3)" 
+                          style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px' }}
+                          tick={{ fill: '#94a3b8' }}
+                        />
+                        <YAxis 
+                          stroke="rgba(148, 163, 184, 0.3)" 
+                          style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '10px' }}
+                          tickFormatter={(value) => `${value.toFixed(0)}%`}
+                          tick={{ fill: '#94a3b8' }}
+                        />
+                        <Tooltip 
+                          contentStyle={{ 
+                            background: 'rgba(15, 20, 25, 0.95)', 
+                            border: '1px solid rgba(212, 175, 55, 0.3)',
+                            borderRadius: '8px',
+                            fontFamily: 'JetBrains Mono, monospace',
+                            fontSize: '11px'
+                          }}
+                          labelStyle={{ color: '#D4AF37', fontWeight: '600' }}
+                        />
+                        <Bar dataKey="hold" fill="#D4AF37" radius={[8, 8, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  <div className="card" style={{ borderRadius: '16px', padding: '32px' }}>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 8px' }}>
+                        <thead>
+                          <tr>
+                            <th style={{ textAlign: 'left', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>EDGE RANGE</th>
+                            <th style={{ textAlign: 'right', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>TRADES</th>
+                            <th style={{ textAlign: 'right', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>WIN RATE</th>
+                            <th style={{ textAlign: 'right', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>P&L</th>
+                            <th style={{ textAlign: 'right', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>HOLD %</th>
+                            <th style={{ textAlign: 'right', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>AVG EDGE</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {edgeAnalytics.map((edge, idx) => (
+                            <tr key={idx} style={{ background: 'rgba(26, 31, 46, 0.4)', borderRadius: '8px' }}>
+                              <td style={{ padding: '16px', fontFamily: 'Inter, sans-serif', fontWeight: '600', color: '#e8e6e3', borderTopLeftRadius: '8px', borderBottomLeftRadius: '8px' }}>{edge.edge}</td>
+                              <td style={{ padding: '16px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', color: '#94a3b8' }}>{edge.trades}</td>
+                              <td style={{ padding: '16px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', color: '#94a3b8' }}>{edge.winRate.toFixed(1)}%</td>
+                              <td style={{ padding: '16px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', fontWeight: '700', color: edge.pnl >= 0 ? '#10b981' : '#ef4444' }}>
+                                {edge.pnl >= 0 ? '+' : ''}${edge.pnl.toLocaleString(undefined, {maximumFractionDigits: 0})}
+                              </td>
+                              <td style={{ padding: '16px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600', color: edge.hold >= 0 ? '#10b981' : '#ef4444' }}>
+                                {edge.hold >= 0 ? '+' : ''}{edge.hold.toFixed(2)}%
+                              </td>
+                              <td style={{ padding: '16px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', color: '#D4AF37', borderTopRightRadius: '8px', borderBottomRightRadius: '8px' }}>{edge.avgEdge.toFixed(1)}%</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Teams Analytics */}
+              {analyticsTab === 'teams' && (
+                <div className="card" style={{ borderRadius: '16px', padding: '32px' }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#D4AF37', fontFamily: 'Inter, sans-serif', marginBottom: '24px' }}>
+                    Performance by Team (3+ Games)
+                  </h3>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 8px' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ textAlign: 'left', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>TEAM</th>
+                          <th style={{ textAlign: 'right', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>GAMES</th>
+                          <th style={{ textAlign: 'right', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>WIN RATE</th>
+                          <th style={{ textAlign: 'right', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>P&L</th>
+                          <th style={{ textAlign: 'right', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>HOLD %</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {teamAnalytics.map((team, idx) => (
+                          <tr key={idx} style={{ background: 'rgba(26, 31, 46, 0.4)', borderRadius: '8px' }}>
+                            <td style={{ padding: '16px', fontFamily: 'Inter, sans-serif', fontWeight: '600', color: '#e8e6e3', borderTopLeftRadius: '8px', borderBottomLeftRadius: '8px' }}>{team.team}</td>
+                            <td style={{ padding: '16px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', color: '#94a3b8' }}>{team.games}</td>
+                            <td style={{ padding: '16px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', color: '#94a3b8' }}>{team.winRate.toFixed(1)}%</td>
+                            <td style={{ padding: '16px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', fontWeight: '700', color: team.pnl >= 0 ? '#10b981' : '#ef4444' }}>
+                              {team.pnl >= 0 ? '+' : ''}${team.pnl.toLocaleString(undefined, {maximumFractionDigits: 0})}
+                            </td>
+                            <td style={{ padding: '16px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600', color: team.hold >= 0 ? '#10b981' : '#ef4444', borderTopRightRadius: '8px', borderBottomRightRadius: '8px' }}>
+                              {team.hold >= 0 ? '+' : ''}{team.hold.toFixed(2)}%
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Over/Under Analytics */}
+              {analyticsTab === 'overunder' && (
+                <div className="card" style={{ borderRadius: '16px', padding: '32px' }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#D4AF37', fontFamily: 'Inter, sans-serif', marginBottom: '24px' }}>
+                    Over/Under Performance
+                  </h3>
+                  {ouAnalytics.length > 0 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+                      {ouAnalytics.map((ou, idx) => (
+                        <div key={idx} style={{ background: 'rgba(26, 31, 46, 0.4)', borderRadius: '12px', padding: '24px' }}>
+                          <div style={{ fontSize: '24px', fontWeight: '800', color: '#D4AF37', fontFamily: 'Inter, sans-serif', marginBottom: '16px' }}>
+                            {ou.type}
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                            <div>
+                              <div style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', marginBottom: '4px' }}>TRADES</div>
+                              <div style={{ fontSize: '20px', fontWeight: '700', color: '#e8e6e3', fontFamily: 'JetBrains Mono, monospace' }}>{ou.trades}</div>
+                            </div>
+                            <div>
+                              <div style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', marginBottom: '4px' }}>WIN RATE</div>
+                              <div style={{ fontSize: '20px', fontWeight: '700', color: '#e8e6e3', fontFamily: 'JetBrains Mono, monospace' }}>{ou.winRate.toFixed(1)}%</div>
+                            </div>
+                            <div>
+                              <div style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', marginBottom: '4px' }}>P&L</div>
+                              <div style={{ fontSize: '20px', fontWeight: '700', color: ou.pnl >= 0 ? '#10b981' : '#ef4444', fontFamily: 'JetBrains Mono, monospace' }}>
+                                {ou.pnl >= 0 ? '+' : ''}${ou.pnl.toLocaleString(undefined, {maximumFractionDigits: 0})}
+                              </div>
+                            </div>
+                            <div>
+                              <div style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', marginBottom: '4px' }}>HOLD %</div>
+                              <div style={{ fontSize: '20px', fontWeight: '700', color: ou.hold >= 0 ? '#10b981' : '#ef4444', fontFamily: 'JetBrains Mono, monospace' }}>
+                                {ou.hold >= 0 ? '+' : ''}{ou.hold.toFixed(2)}%
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '48px', color: '#64748b', fontFamily: 'Inter, sans-serif' }}>
+                      No Over/Under bets found in filtered data
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Odds Range Analytics */}
+              {analyticsTab === 'odds' && (
+                <div className="card" style={{ borderRadius: '16px', padding: '32px' }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#D4AF37', fontFamily: 'Inter, sans-serif', marginBottom: '24px' }}>
+                    Performance by Odds Range
+                  </h3>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 8px' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ textAlign: 'left', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>ODDS RANGE</th>
+                          <th style={{ textAlign: 'right', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>TRADES</th>
+                          <th style={{ textAlign: 'right', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>WIN RATE</th>
+                          <th style={{ textAlign: 'right', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>P&L</th>
+                          <th style={{ textAlign: 'right', padding: '12px', fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '600' }}>HOLD %</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {oddsAnalytics.map((odds, idx) => (
+                          <tr key={idx} style={{ background: 'rgba(26, 31, 46, 0.4)', borderRadius: '8px' }}>
+                            <td style={{ padding: '16px', fontFamily: 'Inter, sans-serif', fontWeight: '600', color: '#e8e6e3', borderTopLeftRadius: '8px', borderBottomLeftRadius: '8px' }}>{odds.oddsRange}</td>
+                            <td style={{ padding: '16px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', color: '#94a3b8' }}>{odds.trades}</td>
+                            <td style={{ padding: '16px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', color: '#94a3b8' }}>{odds.winRate.toFixed(1)}%</td>
+                            <td style={{ padding: '16px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', fontWeight: '700', color: odds.pnl >= 0 ? '#10b981' : '#ef4444' }}>
+                              {odds.pnl >= 0 ? '+' : ''}${odds.pnl.toLocaleString(undefined, {maximumFractionDigits: 0})}
+                            </td>
+                            <td style={{ padding: '16px', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600', color: odds.hold >= 0 ? '#10b981' : '#ef4444', borderTopRightRadius: '8px', borderBottomRightRadius: '8px' }}>
+                              {odds.hold >= 0 ? '+' : ''}{odds.hold.toFixed(2)}%
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ============================================================ */}
         {/* HISTORICAL LOG VIEW                                        */}
