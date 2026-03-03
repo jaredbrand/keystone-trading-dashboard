@@ -16,7 +16,7 @@ export default function LiveTradingDashboard() {
   const [passwordError, setPasswordError] = useState('');
   
   // Set your password here (change this to whatever you want)
-  const DASHBOARD_PASSWORD = 'keystone+';
+  const DASHBOARD_PASSWORD = 'keystone2025';
   
   // Data states
   const [betsData, setBetsData] = useState([]);
@@ -1423,11 +1423,10 @@ export default function LiveTradingDashboard() {
 
           // Odds Range Performance
           const oddsRanges = [
-            { label: '1.50-1.75', min: 1.50, max: 1.75 },
-            { label: '1.75-2.00', min: 1.75, max: 2.00 },
-            { label: '2.00-2.25', min: 2.00, max: 2.25 },
-            { label: '2.25-2.50', min: 2.25, max: 2.50 },
-            { label: '2.50+', min: 2.50, max: 99 }
+            { label: '1.50-1.75', min: 1.50, max: 1.76 },
+            { label: '1.76-2.00', min: 1.76, max: 2.01 },
+            { label: '2.01-2.25', min: 2.01, max: 2.26 },
+            { label: '2.26+', min: 2.26, max: 99 }
           ];
 
           const oddsAnalytics = oddsRanges.map(range => {
