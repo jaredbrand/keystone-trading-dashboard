@@ -4,6 +4,7 @@ import { LineChart, Line, BarChart, Bar, ComposedChart, XAxis, YAxis, CartesianG
 export default function LiveTradingDashboard() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [activeView, setActiveView] = useState('all');
+  const [analyticsTab, setAnalyticsTab] = useState('sports');
   const [dateRange, setDateRange] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -1275,7 +1276,6 @@ export default function LiveTradingDashboard() {
         {/* ANALYTICS VIEW                                             */}
         {/* ============================================================ */}
         {activeView === 'analytics' && (() => {
-          const [analyticsTab, setAnalyticsTab] = React.useState('sports');
           
           // Performance by Sport with detailed metrics
           const sportAnalytics = Object.entries(
