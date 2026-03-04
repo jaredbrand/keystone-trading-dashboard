@@ -5,6 +5,7 @@ export default function LiveTradingDashboard() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [activeView, setActiveView] = useState('all');
   const [analyticsTab, setAnalyticsTab] = useState('sports');
+  const [sportFilter, setSportFilter] = useState('all');
   const [dateRange, setDateRange] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -1277,9 +1278,17 @@ export default function LiveTradingDashboard() {
         {/* ============================================================ */}
         {activeView === 'analytics' && (() => {
           
+          // Get unique sports from filtered bets for sport filter tabs
+          const uniqueSports = ['all', ...new Set(filteredBets.map(b => b.sport || 'Unknown'))].filter(s => s);
+          
+          // Apply sport filter to bets
+          const sportFilteredBets = sportFilter === 'all' 
+            ? filteredBets 
+            : filteredBets.filter(b => b.sport === sportFilter);
+          
           // Performance by Sport with detailed metrics
           const sportAnalytics = Object.entries(
-            filteredBets.reduce((acc, bet) => {
+            sportFilteredBets.reduce((acc, bet) => {
               const sport = bet.sport || 'Unknown';
               if (!acc[sport]) acc[sport] = { 
                 wins: 0, losses: 0, pnl: 0, totalRisk: 0, 
@@ -1309,7 +1318,7 @@ export default function LiveTradingDashboard() {
 
           // Performance by Market
           const marketAnalytics = Object.entries(
-            filteredBets.reduce((acc, bet) => {
+            sportFilteredBets.reduce((acc, bet) => {
               const market = bet.market || 'Unknown';
               if (!acc[market]) acc[market] = { 
                 wins: 0, losses: 0, pnl: 0, totalRisk: 0, 
@@ -1345,7 +1354,7 @@ export default function LiveTradingDashboard() {
           ];
           
           const edgeAnalytics = edgeBuckets.map(bucket => {
-            const bets = filteredBets.filter(b => 
+            const bets = sportFilteredBets.filter(b => 
               b.margin >= bucket.min && b.margin < bucket.max
             );
             const wins = bets.filter(b => b.outcome === 'Win').length;
@@ -1366,7 +1375,7 @@ export default function LiveTradingDashboard() {
           });
 
           // Performance by Team (most frequent teams)
-          const teamData = filteredBets.reduce((acc, bet) => {
+          const teamData = sportFilteredBets.reduce((acc, bet) => {
             // Extract teams from fixture (e.g., "BOS @ LAL" -> ["BOS", "LAL"])
             const teams = bet.fixture.split('@').map(t => t.trim()).filter(t => t);
             teams.forEach(team => {
@@ -1397,7 +1406,7 @@ export default function LiveTradingDashboard() {
             .slice(0, 20); // Top 20 teams
 
           // Over/Under Performance
-          const ouData = filteredBets.reduce((acc, bet) => {
+          const ouData = sportFilteredBets.reduce((acc, bet) => {
             const isOU = bet.selection?.toLowerCase().includes('over') || 
                         bet.selection?.toLowerCase().includes('under');
             if (!isOU) return acc;
@@ -1430,7 +1439,7 @@ export default function LiveTradingDashboard() {
           ];
 
           const oddsAnalytics = oddsRanges.map(range => {
-            const bets = filteredBets.filter(b => 
+            const bets = sportFilteredBets.filter(b => 
               b.odds >= range.min && b.odds < range.max
             );
             const wins = bets.filter(b => b.outcome === 'Win').length;
@@ -1462,7 +1471,7 @@ export default function LiveTradingDashboard() {
               </div>
 
               {/* Analytics Sub-Tabs */}
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '32px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
                 {['sports', 'markets', 'edges', 'overunder', 'odds'].map(tab => (
                   <button
                     key={tab}
@@ -1482,6 +1491,34 @@ export default function LiveTradingDashboard() {
                     }}
                   >
                     {tab === 'overunder' ? 'Over/Under' : tab}
+                  </button>
+                ))}
+              </div>
+
+              {/* Sport Filter Tabs */}
+              <div style={{ display: 'flex', gap: '6px', marginBottom: '32px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'Inter, sans-serif', fontWeight: '500', marginRight: '8px' }}>
+                  FILTER BY SPORT:
+                </span>
+                {uniqueSports.map(sport => (
+                  <button
+                    key={sport}
+                    onClick={() => setSportFilter(sport)}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '6px',
+                      border: sportFilter === sport ? '1px solid #10b981' : '1px solid rgba(148, 163, 184, 0.15)',
+                      background: sportFilter === sport ? 'rgba(16, 185, 129, 0.15)' : 'transparent',
+                      color: sportFilter === sport ? '#10b981' : '#94a3b8',
+                      fontWeight: '500',
+                      fontSize: '11px',
+                      cursor: 'pointer',
+                      fontFamily: 'Inter, sans-serif',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em'
+                    }}
+                  >
+                    {sport === 'all' ? 'All Sports' : sport}
                   </button>
                 ))}
               </div>
