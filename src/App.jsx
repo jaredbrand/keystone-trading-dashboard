@@ -17,7 +17,7 @@ export default function LiveTradingDashboard() {
   const [passwordError, setPasswordError] = useState('');
   
   // Set your password here (change this to whatever you want)
-  const DASHBOARD_PASSWORD = 'keystone2025';
+  const DASHBOARD_PASSWORD = 'keystone+';
   
   // Data states
   const [betsData, setBetsData] = useState([]);
@@ -1355,7 +1355,8 @@ export default function LiveTradingDashboard() {
           
           const edgeAnalytics = edgeBuckets.map(bucket => {
             const bets = sportFilteredBets.filter(b => 
-              b.margin >= bucket.min && b.margin < bucket.max
+              b.margin >= bucket.min && b.margin < bucket.max &&
+              (b.outcome === 'Win' || b.outcome === 'Loss') // Only settled bets
             );
             const wins = bets.filter(b => b.outcome === 'Win').length;
             const losses = bets.filter(b => b.outcome === 'Loss').length;
