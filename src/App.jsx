@@ -385,11 +385,24 @@ export default function LiveTradingDashboard() {
   const avgBetAmount = filteredBets.length > 0 ? filteredBets.reduce((sum, bet) => sum + bet.betAmount, 0) / filteredBets.length : 0;
   const avgDailyRisk = riskDaily.length > 0 ? riskDaily.reduce((sum, d) => sum + d.totalRisk, 0) / filteredDaily.length : 0;
   const actualBetPct = avgDailyRisk > 0 ? (avgBetAmount / avgDailyRisk) * 100 : 0;
-  const riskScore = Math.min(100, Math.max(0,
-    (currentDrawdownPct > 15 ? 50 : currentDrawdownPct * 3) +
-    (sharpeRatio < 0 ? 30 : sharpeRatio < 1 ? 20 : 0) +
-    (avgLossOnLosingDays > 40 ? 30 : avgLossOnLosingDays > 25 ? 15 : 0)
-  ));
+  // --- Risk Score v2: context-aware, 3 components each 0-33 ---
+  // 1. Drawdown relative to total return (not raw %)
+  //    A 4% dip on a 187% return is trivial; same dip on a 5% return is severe
+  const bankroll = summaryData?.bankroll || 100000;
+  const totalReturnPct = bankroll > 0 ? (latestCumValue / bankroll) * 100 : 0;
+  const drawdownReturnRatio = totalReturnPct > 0 ? (currentDrawdownPct / totalReturnPct) * 100 : currentDrawdownPct * 3;
+  const drawdownComponent = Math.min(33, drawdownReturnRatio * 0.5);
+
+  // 2. Sharpe quality — penalise weak risk-adjusted returns
+  //    >=1.5 = excellent (0pts), 1.0-1.5 = good (5pts), 0.5-1.0 = ok (15pts), <0.5 = poor (25pts), negative (33pts)
+  const sharpeComponent = sharpeRatio >= 1.5 ? 0 : sharpeRatio >= 1.0 ? 5 : sharpeRatio >= 0.5 ? 15 : sharpeRatio >= 0 ? 25 : 33;
+
+  // 3. Win/loss asymmetry — reward when avg win > avg loss, penalise the reverse
+  //    If wins outsize losses: low score. If losses outsize wins: higher score.
+  const winLossRatio = avgLossOnLosingDays > 0 ? avgWinOnWinningDays / avgLossOnLosingDays : 1;
+  const asymmetryComponent = winLossRatio >= 1.5 ? 0 : winLossRatio >= 1.0 ? 8 : winLossRatio >= 0.7 ? 18 : 28;
+
+  const riskScore = Math.min(100, Math.max(0, drawdownComponent + sharpeComponent + asymmetryComponent));
   const riskLevel = riskScore < 25 ? { label: 'LOW', color: '#10b981' }
     : riskScore < 50 ? { label: 'MODERATE', color: '#F5A623' }
     : riskScore < 75 ? { label: 'ELEVATED', color: '#f97316' }
