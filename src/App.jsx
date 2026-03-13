@@ -439,13 +439,13 @@ export default function LiveTradingDashboard() {
           background: 'linear-gradient(135deg, rgba(26,31,46,0.8) 0%, rgba(15,20,25,0.9) 100%)',
           border: '1px solid rgba(212,175,55,0.15)',
           borderRadius: '16px',
-          padding: '28px 44px',
+          padding: '20px 40px',
           maxWidth: '400px',
           width: '100%',
           boxShadow: '0 8px 32px rgba(0,0,0,0.4)'
         }}>
-          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-            <img src={SHIELD_IMG} alt="Keystone+" style={{ width: '180px', height: '180px', objectFit: 'contain', marginBottom: '6px', filter: 'drop-shadow(0 0 20px rgba(212,175,55,0.45))' }} />
+          <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+            <img src={SHIELD_IMG} alt="Keystone+" style={{ width: '240px', height: '240px', objectFit: 'contain', marginBottom: '6px', filter: 'drop-shadow(0 0 20px rgba(212,175,55,0.45))' }} />
             <div style={{ fontSize: '28px', fontWeight: '900', background: 'linear-gradient(135deg, #D4AF37 0%, #F5A623 50%, #C9A35C 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: '6px' }}>KEYSTONE+</div>
             <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '500', letterSpacing: '0.1em' }}>SPORTS TRADING DIVISION</div>
           </div>
@@ -504,7 +504,7 @@ export default function LiveTradingDashboard() {
         <div style={{ maxWidth: '1800px', margin: '0 auto', padding: '20px 32px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <img src={SHIELD_IMG} alt="Keystone+" style={{ width: '68px', height: '68px', objectFit: 'contain', filter: 'drop-shadow(0 0 12px rgba(212,175,55,0.3))' }} />
+              <img src={SHIELD_IMG} alt="Keystone+" style={{ width: '88px', height: '88px', objectFit: 'contain', filter: 'drop-shadow(0 0 16px rgba(212,175,55,0.3))' }} />
               <div>
                 <div style={{ fontSize: '28px', fontWeight: '900', background: 'linear-gradient(135deg, #D4AF37 0%, #F5A623 50%, #C9A35C 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontFamily: 'Inter, sans-serif', letterSpacing: '-0.02em' }} className="glow-text">KEYSTONE+</div>
                 <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '500', letterSpacing: '0.1em', marginTop: '2px', fontFamily: 'Inter, sans-serif' }}>SPORTS TRADING DIVISION</div>
@@ -540,7 +540,7 @@ export default function LiveTradingDashboard() {
         </div>
 
         {/* Summary Stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '12px' }}>
           <div className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
             <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em' }}>TOTAL P&L</div>
             <div style={{ fontSize: '32px', fontWeight: '800', color: totalPNL >= 0 ? '#10b981' : '#ef4444', fontFamily: 'Inter, sans-serif' }}>{totalPNL >= 0 ? '+' : ''}${totalPNL.toLocaleString()}</div>
@@ -569,7 +569,7 @@ export default function LiveTradingDashboard() {
 
         {/* Cumulative PNL Chart */}
         {(activeView === 'all' || activeView === 'daily') && filteredDailyWithCum.length > 0 && (
-          <div className="card" style={{ borderRadius: '16px', padding: '32px', marginBottom: '20px' }}>
+          <div className="card" style={{ borderRadius: '16px', padding: '32px', marginBottom: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
               <h2 style={{ fontSize: '20px', fontWeight: '700', fontFamily: 'Inter, sans-serif', color: '#D4AF37' }}>Cumulative Performance</h2>
               <div className="pulse" style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#D4AF37' }} />
@@ -596,7 +596,7 @@ export default function LiveTradingDashboard() {
 
         {/* Open Positions */}
         {openPositions.length > 0 && (activeView === 'all' || activeView === 'bets') && (
-          <div className="card" style={{ borderRadius: '16px', padding: '32px', marginBottom: '20px' }}>
+          <div className="card" style={{ borderRadius: '16px', padding: '32px', marginBottom: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
               <h2 style={{ fontSize: '20px', fontWeight: '700', fontFamily: 'Inter, sans-serif', color: '#F5A623' }}>Open Positions</h2>
               <div className="pulse" style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#F5A623' }} />
@@ -629,7 +629,7 @@ export default function LiveTradingDashboard() {
 
         {/* Market Performance */}
         {(activeView === 'all' || activeView === 'bets') && marketPerformance.length > 0 && (
-          <div className="card" style={{ borderRadius: '16px', padding: '32px', marginBottom: '20px' }}>
+          <div className="card" style={{ borderRadius: '16px', padding: '32px', marginBottom: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
               <h2 style={{ fontSize: '20px', fontWeight: '700', fontFamily: 'Inter, sans-serif', color: '#D4AF37' }}>Performance by Market</h2>
               <div className="pulse" style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#D4AF37' }} />
@@ -648,7 +648,7 @@ export default function LiveTradingDashboard() {
 
         {/* Sport Performance */}
         {(activeView === 'all' || activeView === 'bets') && sportPerformance.length > 0 && (
-          <div className="card" style={{ borderRadius: '16px', padding: '32px', marginBottom: '20px' }}>
+          <div className="card" style={{ borderRadius: '16px', padding: '32px', marginBottom: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
               <h2 style={{ fontSize: '20px', fontWeight: '700', fontFamily: 'Inter, sans-serif', color: '#D4AF37' }}>Performance by Sport</h2>
               <div className="pulse" style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#D4AF37' }} />
@@ -770,7 +770,7 @@ export default function LiveTradingDashboard() {
 
           return (
             <div>
-              <div style={{ marginBottom: '20px' }}>
+              <div style={{ marginBottom: '12px' }}>
                 <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#D4AF37', fontFamily: 'Inter, sans-serif', marginBottom: '8px' }}>Performance Analytics</h2>
                 <p style={{ color: '#64748b', fontSize: '12px', fontFamily: 'JetBrains Mono, monospace' }}>Deep dive into performance across sports, markets, edges & bet types</p>
               </div>
@@ -882,7 +882,7 @@ export default function LiveTradingDashboard() {
                         </div>
                       ))}
                     </div>
-                  ) : <div style={{ textAlign: 'center', padding: '28px 44px', color: '#64748b', fontFamily: 'Inter, sans-serif' }}>No Over/Under bets found in filtered data</div>}
+                  ) : <div style={{ textAlign: 'center', padding: '20px 40px', color: '#64748b', fontFamily: 'Inter, sans-serif' }}>No Over/Under bets found in filtered data</div>}
                 </div>
               )}
 
@@ -945,7 +945,7 @@ export default function LiveTradingDashboard() {
         {/* Risk Module */}
         {activeView === 'risk' && (
           <div>
-            <div style={{ marginBottom: '20px' }}>
+            <div style={{ marginBottom: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '8px' }}>
                 <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#ef4444', fontFamily: 'Inter, sans-serif', margin: 0 }}>Risk Management Module</h2>
                 <div style={{ padding: '4px 16px', borderRadius: '20px', background: `${riskLevel.color}22`, border: `1px solid ${riskLevel.color}`, color: riskLevel.color, fontSize: '11px', fontWeight: '700', letterSpacing: '0.1em', fontFamily: 'Inter, sans-serif' }}>{riskLevel.label} RISK</div>
@@ -979,7 +979,7 @@ export default function LiveTradingDashboard() {
             {/* 4 Key Risk Metric Cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '24px' }}>
               <div className="card" style={{ borderRadius: '16px', padding: '28px', borderColor: 'rgba(239,68,68,0.2)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                   <div>
                     <div style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em', marginBottom: '4px' }}>CURRENT DRAWDOWN</div>
                     <div style={{ fontSize: '36px', fontWeight: '900', color: '#ef4444', fontFamily: 'Inter, sans-serif' }}>-{currentDrawdownPct.toFixed(2)}%</div>
@@ -1001,7 +1001,7 @@ export default function LiveTradingDashboard() {
               </div>
 
               <div className="card" style={{ borderRadius: '16px', padding: '28px', borderColor: 'rgba(212,175,55,0.2)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                   <div>
                     <div style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em', marginBottom: '4px' }}>SHARPE RATIO</div>
                     <div style={{ fontSize: '36px', fontWeight: '900', color: sharpeRatio >= 2 ? '#10b981' : sharpeRatio >= 1 ? '#F5A623' : '#ef4444', fontFamily: 'Inter, sans-serif' }}>{sharpeRatio.toFixed(2)}</div>
@@ -1027,7 +1027,7 @@ export default function LiveTradingDashboard() {
               </div>
 
               <div className="card" style={{ borderRadius: '16px', padding: '28px', borderColor: 'rgba(249,115,22,0.2)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                   <div>
                     <div style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em', marginBottom: '4px' }}>AVG LOSS (LOSING DAYS)</div>
                     <div style={{ fontSize: '36px', fontWeight: '900', color: '#f97316', fontFamily: 'Inter, sans-serif' }}>-{avgLossOnLosingDays.toFixed(2)}%</div>
@@ -1053,7 +1053,7 @@ export default function LiveTradingDashboard() {
               </div>
 
               <div className="card" style={{ borderRadius: '16px', padding: '28px', borderColor: 'rgba(16,185,129,0.2)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                   <div>
                     <div style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'Inter, sans-serif', fontWeight: '500', letterSpacing: '0.05em', marginBottom: '4px' }}>KELLY STRATEGY</div>
                     <div style={{ fontSize: '36px', fontWeight: '900', color: '#10b981', fontFamily: 'Inter, sans-serif' }}>0.3</div>
