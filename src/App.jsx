@@ -385,25 +385,11 @@ export default function LiveTradingDashboard() {
   const avgBetAmount = filteredBets.length > 0 ? filteredBets.reduce((sum, bet) => sum + bet.betAmount, 0) / filteredBets.length : 0;
   const avgDailyRisk = riskDaily.length > 0 ? riskDaily.reduce((sum, d) => sum + d.totalRisk, 0) / filteredDaily.length : 0;
   const actualBetPct = avgDailyRisk > 0 ? (avgBetAmount / avgDailyRisk) * 100 : 0;
-  // --- Risk Score v3: balanced — sensitive to big drawdowns, rewarding on small ones ---
-  const bankroll = summaryData?.bankroll || 100000;
-  const totalReturnPct = bankroll > 0 ? (latestCumValue / bankroll) * 100 : 0;
-
-  // 1. Drawdown — dual approach:
-  //    - Small drawdowns (<15%): softened by return context (a 4% dip on +187% is fine)
-  //    - Large drawdowns (>15%): taken seriously on their own — losing 50%+ from peak is always dangerous
-  const contextSoftened = totalReturnPct > 0 ? (currentDrawdownPct / Math.max(totalReturnPct, 20)) * 100 * 0.4 : currentDrawdownPct * 2;
-  const rawSeverity = currentDrawdownPct > 50 ? 33 : currentDrawdownPct > 30 ? 20 + (currentDrawdownPct - 30) * 0.65 : currentDrawdownPct > 15 ? 10 + (currentDrawdownPct - 15) * 0.67 : 0;
-  const drawdownComponent = Math.min(33, currentDrawdownPct <= 15 ? contextSoftened : Math.max(rawSeverity, contextSoftened));
-
-  // 2. Sharpe — >=1.5 excellent (0pts), 1.0-1.5 good (5pts), 0.5-1.0 ok (15pts), <0.5 poor (25pts), negative (33pts)
-  const sharpeComponent = sharpeRatio >= 1.5 ? 0 : sharpeRatio >= 1.0 ? 5 : sharpeRatio >= 0.5 ? 15 : sharpeRatio >= 0 ? 25 : 33;
-
-  // 3. Win/loss asymmetry — reward wins outsizing losses, penalise the reverse
-  const winLossRatio = avgLossOnLosingDays > 0 ? avgWinOnWinningDays / avgLossOnLosingDays : 1;
-  const asymmetryComponent = winLossRatio >= 1.5 ? 0 : winLossRatio >= 1.0 ? 8 : winLossRatio >= 0.7 ? 18 : 28;
-
-  const riskScore = Math.min(100, Math.max(0, drawdownComponent + sharpeComponent + asymmetryComponent));
+  const riskScore = Math.min(100, Math.max(0,
+    (currentDrawdownPct > 15 ? 50 : currentDrawdownPct * 3) +
+    (sharpeRatio < 0 ? 30 : sharpeRatio < 1 ? 20 : 0) +
+    (avgLossOnLosingDays > 40 ? 30 : avgLossOnLosingDays > 25 ? 15 : 0)
+  ));
   const riskLevel = riskScore < 25 ? { label: 'LOW', color: '#10b981' }
     : riskScore < 50 ? { label: 'MODERATE', color: '#F5A623' }
     : riskScore < 75 ? { label: 'ELEVATED', color: '#f97316' }
