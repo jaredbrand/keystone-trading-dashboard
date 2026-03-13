@@ -445,7 +445,7 @@ export default function LiveTradingDashboard() {
           boxShadow: '0 8px 32px rgba(0,0,0,0.4)'
         }}>
           <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <img src={SHIELD_IMG} alt="Keystone+" style={{ width: '72px', height: '72px', objectFit: 'contain', marginBottom: '16px', filter: 'drop-shadow(0 0 12px rgba(212,175,55,0.3))' }} />
+            <img src={SHIELD_IMG} alt="Keystone+" style={{ width: '110px', height: '110px', objectFit: 'contain', marginBottom: '16px', filter: 'drop-shadow(0 0 12px rgba(212,175,55,0.3))' }} />
             <div style={{ fontSize: '28px', fontWeight: '900', background: 'linear-gradient(135deg, #D4AF37 0%, #F5A623 50%, #C9A35C 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: '6px' }}>KEYSTONE+</div>
             <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '500', letterSpacing: '0.1em' }}>SPORTS TRADING DIVISION</div>
           </div>
@@ -504,7 +504,7 @@ export default function LiveTradingDashboard() {
         <div style={{ maxWidth: '1800px', margin: '0 auto', padding: '20px 32px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <img src={SHIELD_IMG} alt="Keystone+" style={{ width: '44px', height: '44px', objectFit: 'contain', filter: 'drop-shadow(0 0 8px rgba(212,175,55,0.3))' }} />
+              <img src={SHIELD_IMG} alt="Keystone+" style={{ width: '54px', height: '54px', objectFit: 'contain', filter: 'drop-shadow(0 0 8px rgba(212,175,55,0.3))' }} />
               <div>
                 <div style={{ fontSize: '28px', fontWeight: '900', background: 'linear-gradient(135deg, #D4AF37 0%, #F5A623 50%, #C9A35C 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontFamily: 'Inter, sans-serif', letterSpacing: '-0.02em' }} className="glow-text">KEYSTONE+</div>
                 <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '500', letterSpacing: '0.1em', marginTop: '2px', fontFamily: 'Inter, sans-serif' }}>SPORTS TRADING DIVISION</div>
