@@ -445,7 +445,7 @@ export default function LiveTradingDashboard() {
           boxShadow: '0 8px 32px rgba(0,0,0,0.4)'
         }}>
           <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <img src={SHIELD_IMG} alt="Keystone+" style={{ width: '110px', height: '110px', objectFit: 'contain', marginBottom: '16px', filter: 'drop-shadow(0 0 12px rgba(212,175,55,0.3))' }} />
+            <img src={SHIELD_IMG} alt="Keystone+" style={{ width: '180px', height: '180px', objectFit: 'contain', marginBottom: '20px', filter: 'drop-shadow(0 0 20px rgba(212,175,55,0.45))' }} />
             <div style={{ fontSize: '28px', fontWeight: '900', background: 'linear-gradient(135deg, #D4AF37 0%, #F5A623 50%, #C9A35C 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: '6px' }}>KEYSTONE+</div>
             <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '500', letterSpacing: '0.1em' }}>SPORTS TRADING DIVISION</div>
           </div>
@@ -708,6 +708,7 @@ export default function LiveTradingDashboard() {
               { label: 'W/L WEEKS', value: summaryData.wlWeeks },
               { label: 'AVERAGE TRADE TIME', value: summaryData.avgTime },
               { label: 'AVERAGE ALPHA', value: `${summaryData.avgEdge.toFixed(2)}%`, gold: true },
+              { label: 'ROI %', value: `${summaryData.roi >= 0 ? '+' : ''}${summaryData.roi.toFixed(2)}%`, gold: true },
             ].map((item, idx) => (
               <div key={idx} className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
                 <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500' }}>{item.label}</div>
