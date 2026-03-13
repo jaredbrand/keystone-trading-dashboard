@@ -385,20 +385,21 @@ export default function LiveTradingDashboard() {
   const avgBetAmount = filteredBets.length > 0 ? filteredBets.reduce((sum, bet) => sum + bet.betAmount, 0) / filteredBets.length : 0;
   const avgDailyRisk = riskDaily.length > 0 ? riskDaily.reduce((sum, d) => sum + d.totalRisk, 0) / filteredDaily.length : 0;
   const actualBetPct = avgDailyRisk > 0 ? (avgBetAmount / avgDailyRisk) * 100 : 0;
-  // --- Risk Score v2: context-aware, 3 components each 0-33 ---
-  // 1. Drawdown relative to total return (not raw %)
-  //    A 4% dip on a 187% return is trivial; same dip on a 5% return is severe
+  // --- Risk Score v3: balanced — sensitive to big drawdowns, rewarding on small ones ---
   const bankroll = summaryData?.bankroll || 100000;
   const totalReturnPct = bankroll > 0 ? (latestCumValue / bankroll) * 100 : 0;
-  const drawdownReturnRatio = totalReturnPct > 0 ? (currentDrawdownPct / totalReturnPct) * 100 : currentDrawdownPct * 3;
-  const drawdownComponent = Math.min(33, drawdownReturnRatio * 0.5);
 
-  // 2. Sharpe quality — penalise weak risk-adjusted returns
-  //    >=1.5 = excellent (0pts), 1.0-1.5 = good (5pts), 0.5-1.0 = ok (15pts), <0.5 = poor (25pts), negative (33pts)
+  // 1. Drawdown — dual approach:
+  //    - Small drawdowns (<15%): softened by return context (a 4% dip on +187% is fine)
+  //    - Large drawdowns (>15%): taken seriously on their own — losing 50%+ from peak is always dangerous
+  const contextSoftened = totalReturnPct > 0 ? (currentDrawdownPct / Math.max(totalReturnPct, 20)) * 100 * 0.4 : currentDrawdownPct * 2;
+  const rawSeverity = currentDrawdownPct > 50 ? 33 : currentDrawdownPct > 30 ? 20 + (currentDrawdownPct - 30) * 0.65 : currentDrawdownPct > 15 ? 10 + (currentDrawdownPct - 15) * 0.67 : 0;
+  const drawdownComponent = Math.min(33, currentDrawdownPct <= 15 ? contextSoftened : Math.max(rawSeverity, contextSoftened));
+
+  // 2. Sharpe — >=1.5 excellent (0pts), 1.0-1.5 good (5pts), 0.5-1.0 ok (15pts), <0.5 poor (25pts), negative (33pts)
   const sharpeComponent = sharpeRatio >= 1.5 ? 0 : sharpeRatio >= 1.0 ? 5 : sharpeRatio >= 0.5 ? 15 : sharpeRatio >= 0 ? 25 : 33;
 
-  // 3. Win/loss asymmetry — reward when avg win > avg loss, penalise the reverse
-  //    If wins outsize losses: low score. If losses outsize wins: higher score.
+  // 3. Win/loss asymmetry — reward wins outsizing losses, penalise the reverse
   const winLossRatio = avgLossOnLosingDays > 0 ? avgWinOnWinningDays / avgLossOnLosingDays : 1;
   const asymmetryComponent = winLossRatio >= 1.5 ? 0 : winLossRatio >= 1.0 ? 8 : winLossRatio >= 0.7 ? 18 : 28;
 
