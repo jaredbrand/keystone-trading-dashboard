@@ -1,5 +1,3 @@
-Latest Code: 
-
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, BarChart, Bar, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area } from 'recharts';
 
