@@ -701,24 +701,22 @@ export default function LiveTradingDashboard() {
         {activeView === 'summary' && summaryData && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px', marginTop: '32px' }}>
             {[
-              { label: 'SIDES WIN RATE', value: `${summaryData.sidesWinRate}%`, sub: `HOLD: ${summaryData.sidesHold}%` },
-              { label: 'TOTALS WIN RATE', value: `${summaryData.totalsWinRate}%`, sub: `HOLD: ${summaryData.totalsHold}%` },
-              { label: 'AVG ODDS', value: summaryData.avgOdds, sub: `MODEL: ${summaryData.avgModelOdds}` },
-              { label: 'BANKROLL', value: `$${summaryData.bankroll.toLocaleString()}`, sub: `DURATION: ${summaryData.duration} DAYS`, gold: true },
-              { label: 'W/L WEEKS', value: summaryData.wlWeeks },
-              { label: 'AVERAGE TRADE TIME', value: summaryData.avgTime },
-              { label: 'AVERAGE ALPHA', value: `${summaryData.avgEdge.toFixed(2)}%`, gold: true },
-              { label: 'ROI %', value: `${summaryData.roi >= 0 ? '+' : ''}${summaryData.roi.toFixed(2)}%`, gold: true },
-            ].map((item, idx) => (
-              <div key={idx} className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
-                <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500' }}>{item.label}</div>
-                <div style={{ fontSize: '28px', fontWeight: '800', color: item.gold ? '#D4AF37' : '#e8e6e3', fontFamily: 'Inter, sans-serif' }}>{item.value}</div>
-                {item.sub && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '8px', fontFamily: 'JetBrains Mono, monospace' }}>{item.sub}</div>}
-              </div>
-            ))}
-          </div>
-        )}
-
+  { label: 'SIDES WIN RATE', value: `${summaryData.sidesWinRate}%`, sub: `HOLD: ${summaryData.sidesHold}%` },
+  { label: 'TOTALS WIN RATE', value: `${summaryData.totalsWinRate}%`, sub: `HOLD: ${summaryData.totalsHold}%` },
+  { label: 'AVG ODDS', value: summaryData.avgOdds, sub: `MODEL: ${summaryData.avgModelOdds}` },
+  { label: 'BANKROLL', value: `$${summaryData.bankroll.toLocaleString()}`, sub: `DURATION: ${summaryData.duration} DAYS`, color: '#10b981' },
+  { label: 'W/L WEEKS', value: summaryData.wlWeeks },
+  { label: 'AVERAGE TRADE TIME', value: summaryData.avgTime },
+  { label: 'AVERAGE ALPHA', value: `${summaryData.avgEdge.toFixed(2)}%`, color: '#e8e6e3' },
+  { label: 'ROI %', value: `${summaryData.roi >= 0 ? '+' : ''}${summaryData.roi.toFixed(2)}%`, color: '#10b981' },
+].map((item, idx) => (
+  <div key={idx} className="stat-card" style={{ padding: '24px', borderRadius: '12px' }}>
+    <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', fontFamily: 'Inter, sans-serif', fontWeight: '500' }}>{item.label}</div>
+    <div style={{ fontSize: '28px', fontWeight: '800', color: item.color || '#e8e6e3', fontFamily: 'Inter, sans-serif' }}>{item.value}</div>
+    {item.sub && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '8px', fontFamily: 'JetBrains Mono, monospace' }}>{item.sub}</div>}
+  </div>
+))}
+            
         {/* Analytics View — same as original, kept intact */}
         {activeView === 'analytics' && (() => {
           const uniqueSports = ['all', ...new Set(filteredBets.map(b => b.sport || 'Unknown'))].filter(s => s);
