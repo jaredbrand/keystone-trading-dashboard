@@ -257,7 +257,7 @@ export default function LiveTradingDashboard() {
         avgEdge: parseFloat(summaryRows[1]?.[4]?.replace('%', '')) || 0,
         avgHold: parseFloat(summaryRows[1]?.[5]?.replace('%', '')) || 0,
         roi: parseFloat(summaryRows[1]?.[6]?.replace('%', '')) || 0,
-        bankroll: parseFloat(summaryRows[1]?.[7]?.replace(/[$,]/g, '')) || 0,
+        Starting Bankroll: parseFloat(summaryRows[1]?.[7]?.replace(/[$,]/g, '')) || 0,
         duration: parseInt(summaryRows[1]?.[8]) || 0,
         wlWeeks: summaryRows[1]?.[9] || '',
         avgTradesPerDay: parseFloat(summaryRows[9]?.[0]) || 0,
@@ -704,7 +704,7 @@ export default function LiveTradingDashboard() {
               { label: 'SIDES WIN RATE', value: `${summaryData.sidesWinRate}%`, sub: `HOLD: ${summaryData.sidesHold}%` },
               { label: 'TOTALS WIN RATE', value: `${summaryData.totalsWinRate}%`, sub: `HOLD: ${summaryData.totalsHold}%` },
               { label: 'AVG ODDS', value: summaryData.avgOdds, sub: `MODEL: ${summaryData.avgModelOdds}` },
-              { label: 'BANKROLL', value: `$${summaryData.bankroll.toLocaleString()}`, sub: `DURATION: ${summaryData.duration} DAYS`, gold: true },
+              { label: 'Starting Bankroll', value: `$${summaryData.Starting Bankroll.toLocaleString()}`, sub: `DURATION: ${summaryData.duration} DAYS`, gold: true },
               { label: 'W/L WEEKS', value: summaryData.wlWeeks },
               { label: 'AVERAGE TRADE TIME', value: summaryData.avgTime },
               { label: 'AVERAGE ALPHA', value: `${summaryData.avgEdge.toFixed(2)}%`, gold: true },
@@ -1072,7 +1072,7 @@ export default function LiveTradingDashboard() {
                     <span style={{ fontSize: '11px', color: '#10b981', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>${avgBetAmount.toLocaleString(undefined, {maximumFractionDigits: 0})}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>% of Bankroll</span>
+                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>% of Starting Bankroll</span>
                     <span style={{ fontSize: '11px', color: (avgBetAmount / 100000 * 100) > 5 ? '#ef4444' : (avgBetAmount / 100000 * 100) > 3 ? '#F5A623' : '#10b981', fontFamily: 'JetBrains Mono, monospace', fontWeight: '600' }}>{(avgBetAmount / 100000 * 100).toFixed(1)}%</span>
                   </div>
                 </div>
