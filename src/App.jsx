@@ -104,6 +104,7 @@ export default function LiveTradingDashboard() {
         // Extract values from correct columns
         // Column N (index 13) = Bet Amount
         // Column U (index 20) = PNL
+        // Column V (index 21) = Exposure
         const betAmount = parseFloat(row[13]?.replace(/[$,]/g, '')) || 0;
         
         // Parse PNL - handle both negative numbers and parentheses format
@@ -119,6 +120,17 @@ export default function LiveTradingDashboard() {
           pnlValue = parseFloat(cleaned) || 0;
         }
         
+        // Parse Exposure (Column V)
+        const exposureStr = row[21] || '';
+        let exposureValue = 0;
+        if (exposureStr) {
+          let cleaned = exposureStr.replace(/[$,%]/g, '');
+          if (cleaned.includes('(') && cleaned.includes(')')) {
+            cleaned = '-' + cleaned.replace(/[()]/g, '');
+          }
+          exposureValue = parseFloat(cleaned) || 0;
+        }
+        
         return {
           game: bet['Game Number'],
           fixture: bet['Fixture'],
@@ -132,6 +144,7 @@ export default function LiveTradingDashboard() {
           betAmount: betAmount,
           outcome: bet['Outcome'] || '',
           pnl: pnlValue,
+          exposure: exposureValue,
           confirmed: isConfirmed
         };
       }).filter(bet => bet.fixture && bet.confirmed); // Only confirmed bets
@@ -1034,6 +1047,7 @@ export default function LiveTradingDashboard() {
                         <span>ODDS: {trade.odds}</span>
                         <span>STAKE: ${trade.betAmount.toLocaleString()}</span>
                         <span>MARGIN: {trade.margin}%</span>
+                        <span>EXPOSURE: {trade.exposure.toFixed(2)}%</span>
                       </div>
                     </div>
                     <div style={{ 
@@ -1219,6 +1233,7 @@ export default function LiveTradingDashboard() {
                         <span>SELECTION: {trade.selection}{trade.handicap ? ` (${trade.handicap > 0 ? '+' : ''}${trade.handicap})` : ''}</span>
                         <span>ODDS: {trade.odds}</span>
                         <span>STAKE: ${trade.betAmount.toLocaleString()}</span>
+                        <span>EXPOSURE: {trade.exposure.toFixed(2)}%</span>
                       </div>
                     </div>
                     <div style={{ 
@@ -1849,6 +1864,7 @@ export default function LiveTradingDashboard() {
                         <span>SELECTION: {trade.selection}{trade.handicap ? ` (${trade.handicap > 0 ? '+' : ''}${trade.handicap})` : ''}</span>
                         <span>ODDS: {trade.odds}</span>
                         <span>STAKE: ${trade.betAmount.toLocaleString()}</span>
+                        <span>EXPOSURE: {trade.exposure.toFixed(2)}%</span>
                         <span>DATE: {trade.date}</span>
                       </div>
                     </div>
