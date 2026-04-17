@@ -29,7 +29,7 @@ export default function LiveTradingDashboard() {
   const API_KEY = 'AIzaSyAQX7sO8yLl32D7bOPix3Vk4GRtWuc1Zps';
   
   // Tab names and ranges
-  const BETS_RANGE = 'bets_week_1!A:V';
+  const BETS_RANGE = 'trades_main!A:V';
   const DAILY_PNL_RANGE = 'DailyPNL!A:O';
   const SUMMARY_RANGE = 'SummaryStats!A:P';
 
