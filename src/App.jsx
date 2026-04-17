@@ -26,7 +26,7 @@ export default function LiveTradingDashboard() {
 
   // Google Sheets Configuration
   const SHEET_ID = '12ERObVmJ6Zq8C_tMoWLPHcx_fkHvNBB6RfbMcEtOa5Q';
-  const API_KEY = 'AIzaSyBTtxKBss2sKNHFYKeYHj0CedPBVN9GxEs';
+  const API_KEY = 'AIzaSyAQX7sO8yLl32D7bOPix3Vk4GRtWuc1Zps';
   
   // Tab names and ranges
   const BETS_RANGE = 'bets_week_1!A:V';
